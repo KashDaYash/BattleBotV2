@@ -2,7 +2,6 @@
 
   <h3 style="margin:0 0 8px 0">Profile</h3>
 
-  <!-- USER CARD -->
   <div class="glass" style="padding:12px;display:flex;gap:10px;align-items:center">
     <img id="p-avatar" style="width:64px;height:64px;border-radius:50%" />
     <div>
@@ -13,7 +12,6 @@
     </div>
   </div>
 
-  <!-- CHARACTER CARD -->
   <div id="char-card" class="glass" style="padding:12px;margin-top:12px">
     Loading...
   </div>
@@ -26,14 +24,23 @@
 </section>
 
 <script>
-let CURRENT_ID = "12345"; // later: replace with Telegram ID automatically
+const tg = window.Telegram.WebApp;
+tg.expand();   // full height UI
+
+let USER = tg.initDataUnsafe?.user;   // <- REAL Telegram user here
 
 async function loadProfile() {
 
+  if (!USER) {
+    document.getElementById("char-card").innerHTML =
+      "⚠️ Please open inside Telegram.";
+    return;
+  }
+
   const payload = {
-    telegramId: CURRENT_ID,
-    username: "testplayer",
-    fullname: "Demo User"
+    telegramId: USER.id.toString(),
+    username: USER.username || "",
+    fullname: USER.first_name + (USER.last_name ? " " + USER.last_name : "")
   };
 
   const res = await fetch("/api/users", {
@@ -44,17 +51,21 @@ async function loadProfile() {
 
   const data = await res.json();
 
-  document.getElementById("p-name").innerText = data.user.fullname || "Unknown";
+  // USER INFO UI
+  document.getElementById("p-name").innerText = data.user.fullname;
   document.getElementById("p-username").innerText =
     data.user.username ? "@" + data.user.username : "—";
   document.getElementById("p-id").innerText = "ID: " + data.user.telegramId;
 
+  // REAL Telegram profile photo (fallback if none)
+  document.getElementById("p-avatar").src =
+    USER.photo_url ||
+    "https://api.dicebear.com/7.x/thumbs/svg?seed=" + data.user.telegramId;
+
   document.getElementById("coins").innerHTML =
     "<b>Coins:</b> " + (data.user.coins || 0);
 
-  document.getElementById("p-avatar").src =
-    "https://api.dicebear.com/7.x/thumbs/svg?seed=" + data.user.telegramId;
-
+  // CHARACTER UI
   const c = data.character;
 
   document.getElementById("char-card").innerHTML = `
@@ -77,16 +88,16 @@ async function claimDaily() {
   const res = await fetch("/api/daily", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ telegramId: CURRENT_ID })
+    body: JSON.stringify({ telegramId: USER.id.toString() })
   });
 
   const data = await res.json();
 
   if (data.ok) {
-    alert("🎁 Claimed! Coins updated: " + data.coins);
+    alert("🎁 Claimed! Coins: " + data.coins);
     loadProfile();
   } else {
-    alert("⏳ try again in " + data.cooldown + " minutes");
+    alert("⏳ wait " + data.cooldown + " minutes");
   }
 }
 
