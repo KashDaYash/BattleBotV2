@@ -1,6 +1,77 @@
 <section class="glass" style="margin:12px;padding:14px">
-  <h3>Profile</h3>
-  <div id="char-card" class="glass" style="padding:12px;margin-top:10px">
+
+  <h3 style="margin:0 0 8px 0">Profile</h3>
+
+  <!-- USER CARD -->
+  <div class="glass" style="padding:12px;display:flex;gap:10px;align-items:center">
+    <img id="p-avatar" style="width:64px;height:64px;border-radius:50%" />
+    <div>
+      <h4 id="p-name" style="margin:0">Loading…</h4>
+      <p id="p-username" style="margin:0;font-size:14px;opacity:.8">@—</p>
+      <small id="p-id" style="opacity:.6">ID: —</small>
+    </div>
+  </div>
+
+  <!-- CHARACTER CARD -->
+  <div id="char-card" class="glass" style="padding:12px;margin-top:12px">
     Loading...
   </div>
+
 </section>
+
+<script>
+async function loadProfile() {
+
+  // 👉 (Later replace with Telegram WebApp user — abhi test data)
+  const payload = {
+    telegramId: "12345",
+    username: "testplayer",
+    fullname: "Demo User"
+  };
+
+  const res = await fetch("/api/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+
+  // ===== USER =====
+  document.getElementById("p-name").innerText =
+    data.user.fullname || "Unknown";
+
+  document.getElementById("p-username").innerText =
+    data.user.username ? "@" + data.user.username : "—";
+
+  document.getElementById("p-id").innerText =
+    "ID: " + data.user.telegramId;
+
+  // placeholder avatar (later Telegram DP)
+  document.getElementById("p-avatar").src =
+    "https://api.dicebear.com/7.x/thumbs/svg?seed=" + data.user.telegramId;
+
+  // ===== CHARACTER =====
+  const c = data.character;
+
+  document.getElementById("char-card").innerHTML = `
+      <div style="display:flex;gap:10px;align-items:center">
+        <img src="${c.imageUrl}"
+             style="width:90px;height:90px;border-radius:20px;object-fit:cover">
+        <div>
+          <h4 style="margin:0">${c.name}</h4>
+          <small>Level ${c.level}</small>
+        </div>
+      </div>
+
+      <hr>
+
+      <p>❤️ HP: <b>${c.stats.hp}</b></p>
+      <p>⚔ Attack: <b>${c.stats.attack}</b></p>
+      <p>🛡 Defense: <b>${c.stats.defense}</b></p>
+      <p>⚡ Speed: <b>${c.stats.speed}</b></p>
+  `;
+}
+
+loadProfile();
+</script>
