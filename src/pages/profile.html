@@ -9,6 +9,7 @@
       <h4 id="p-name" style="margin:0">Loading…</h4>
       <p id="p-username" style="margin:0;font-size:14px;opacity:.8">@—</p>
       <small id="p-id" style="opacity:.6">ID: —</small>
+      <p id="coins" style="margin-top:6px"><b>Coins:</b> —</p>
     </div>
   </div>
 
@@ -17,14 +18,20 @@
     Loading...
   </div>
 
+  <button id="dailyBtn"
+          style="margin-top:12px;width:100%;padding:10px;border:none;border-radius:12px;background:#2ecc71;color:white">
+    🎁 Claim Daily Reward
+  </button>
+
 </section>
 
 <script>
+let CURRENT_ID = "12345"; // later: replace with Telegram ID automatically
+
 async function loadProfile() {
 
-  // 👉 (Later replace with Telegram WebApp user — abhi test data)
   const payload = {
-    telegramId: "12345",
+    telegramId: CURRENT_ID,
     username: "testplayer",
     fullname: "Demo User"
   };
@@ -37,41 +44,53 @@ async function loadProfile() {
 
   const data = await res.json();
 
-  // ===== USER =====
-  document.getElementById("p-name").innerText =
-    data.user.fullname || "Unknown";
-
+  document.getElementById("p-name").innerText = data.user.fullname || "Unknown";
   document.getElementById("p-username").innerText =
     data.user.username ? "@" + data.user.username : "—";
+  document.getElementById("p-id").innerText = "ID: " + data.user.telegramId;
 
-  document.getElementById("p-id").innerText =
-    "ID: " + data.user.telegramId;
+  document.getElementById("coins").innerHTML =
+    "<b>Coins:</b> " + (data.user.coins || 0);
 
-  // placeholder avatar (later Telegram DP)
   document.getElementById("p-avatar").src =
     "https://api.dicebear.com/7.x/thumbs/svg?seed=" + data.user.telegramId;
 
-  // ===== CHARACTER =====
   const c = data.character;
 
   document.getElementById("char-card").innerHTML = `
-      <div style="display:flex;gap:10px;align-items:center">
-        <img src="${c.imageUrl}"
-             style="width:90px;height:90px;border-radius:20px;object-fit:cover">
-        <div>
-          <h4 style="margin:0">${c.name}</h4>
-          <small>Level ${c.level}</small>
-        </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <img src="${c.imageUrl}"
+           style="width:90px;height:90px;border-radius:20px;object-fit:cover">
+      <div>
+        <h4 style="margin:0">${c.name}</h4>
+        <small>Level ${c.level}</small>
       </div>
-
-      <hr>
-
-      <p>❤️ HP: <b>${c.stats.hp}</b></p>
-      <p>⚔ Attack: <b>${c.stats.attack}</b></p>
-      <p>🛡 Defense: <b>${c.stats.defense}</b></p>
-      <p>⚡ Speed: <b>${c.stats.speed}</b></p>
-  `;
+    </div>
+    <hr>
+    <p>❤️ HP: <b>${c.stats.hp}</b></p>
+    <p>⚔ Attack: <b>${c.stats.attack}</b></p>
+    <p>🛡 Defense: <b>${c.stats.defense}</b></p>
+    <p>⚡ Speed: <b>${c.stats.speed}</b></p>`;
 }
+
+async function claimDaily() {
+  const res = await fetch("/api/daily", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ telegramId: CURRENT_ID })
+  });
+
+  const data = await res.json();
+
+  if (data.ok) {
+    alert("🎁 Claimed! Coins updated: " + data.coins);
+    loadProfile();
+  } else {
+    alert("⏳ try again in " + data.cooldown + " minutes");
+  }
+}
+
+document.getElementById("dailyBtn").onclick = claimDaily;
 
 loadProfile();
 </script>
