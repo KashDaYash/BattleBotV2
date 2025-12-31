@@ -25,47 +25,47 @@
 
 <script>
 const tg = window.Telegram.WebApp;
-tg.expand();   // full height UI
+tg.expand();
 
-let USER = tg.initDataUnsafe?.user;   // <- REAL Telegram user here
+let AUTH = null;
 
 async function loadProfile() {
-
-  if (!USER) {
+  if (!tg.initData) {
     document.getElementById("char-card").innerHTML =
-      "⚠️ Please open inside Telegram.";
+      "⚠️ Open inside Telegram WebApp.";
     return;
   }
 
-  const payload = {
-    telegramId: USER.id.toString(),
-    username: USER.username || "",
-    fullname: USER.first_name + (USER.last_name ? " " + USER.last_name : "")
-  };
-
-  const res = await fetch("/api/users", {
+  const res = await fetch("/api/auth", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({ initData: tg.initData })
   });
 
   const data = await res.json();
 
-  // USER INFO UI
-  document.getElementById("p-name").innerText = data.user.fullname;
-  document.getElementById("p-username").innerText =
-    data.user.username ? "@" + data.user.username : "—";
-  document.getElementById("p-id").innerText = "ID: " + data.user.telegramId;
+  if (!data.ok) {
+    document.getElementById("char-card").innerHTML =
+      "❌ Auth failed.";
+    return;
+  }
 
-  // REAL Telegram profile photo (fallback if none)
+  AUTH = data;
+
+  const user = data.user;
+
+  document.getElementById("p-name").innerText = user.fullname;
+  document.getElementById("p-username").innerText =
+    user.username ? "@" + user.username : "—";
+  document.getElementById("p-id").innerText = "ID: " + user.telegramId;
+
   document.getElementById("p-avatar").src =
-    USER.photo_url ||
-    "https://api.dicebear.com/7.x/thumbs/svg?seed=" + data.user.telegramId;
+    tg.initDataUnsafe?.user?.photo_url ||
+    "https://api.dicebear.com/7.x/thumbs/svg?seed=" + user.telegramId;
 
   document.getElementById("coins").innerHTML =
-    "<b>Coins:</b> " + (data.user.coins || 0);
+    "<b>Coins:</b> " + (user.coins || 0);
 
-  // CHARACTER UI
   const c = data.character;
 
   document.getElementById("char-card").innerHTML = `
@@ -85,10 +85,12 @@ async function loadProfile() {
 }
 
 async function claimDaily() {
+  if (!AUTH) return;
+
   const res = await fetch("/api/daily", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ telegramId: USER.id.toString() })
+    body: JSON.stringify({ telegramId: AUTH.user.telegramId })
   });
 
   const data = await res.json();
