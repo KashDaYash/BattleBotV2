@@ -1,11 +1,33 @@
 <header class="glass header">
-  <div class="user-row">
-    <img id="avatar" class="avatar">
-    <div>
-      <h2 id="name">Player</h2>
-      <p id="username">@username</p>
-      <small id="uid">ID —</small>
+  <div style="display:flex;align-items:center;gap:12px">
+
+    <img id="avatar"
+         style="width:64px;height:64px;border-radius:18px;border:2px solid rgba(255,255,255,.5)">
+
+    <div style="flex:1">
+      <h3 id="name" style="margin:0 0 2px 0">Player</h3>
+      <p id="username" style="margin:0;font-size:14px;opacity:.8">@username</p>
+
+      <!-- coins badge -->
+      <div id="coinsBadge"
+           style="margin-top:6px;display:inline-block;padding:4px 10px;border-radius:14px;
+                  background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);
+                  font-size:13px">
+        💰 <span id="coinsMini">0</span>
+      </div>
+
+      <!-- XP bar -->
+      <div style="margin-top:6px;width:100%;height:6px;border-radius:6px;
+                  background:rgba(255,255,255,.18)">
+        <div id="xpBar"
+             style="height:100%;width:30%;border-radius:6px;
+                    background:linear-gradient(90deg,#4caf50,#8bc34a)">
+        </div>
+      </div>
+
+      <small id="uid" style="opacity:.65">ID —</small>
     </div>
+
   </div>
 </header>
 <section class="glass" style="margin:12px;padding:14px">
