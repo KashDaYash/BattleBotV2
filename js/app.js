@@ -19,7 +19,7 @@ async function load(page) {
   }
 }
 
-load("profile");
+setTimeout(() => load("profile"), 100);
 
 let AUTH = null;
 
