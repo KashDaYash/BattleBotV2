@@ -20,7 +20,8 @@
                   background:rgba(255,255,255,.18)">
         <div id="xpBar"
              style="height:100%;width:25%;border-radius:6px;
-                    background:linear-gradient(90deg,#4caf50,#8bc34a)"></div>
+                    background:linear-gradient(90deg,#4caf50,#8bc34a)">
+        </div>
       </div>
 
       <small id="uid" style="opacity:.65">ID —</small>
@@ -65,6 +66,7 @@ let AUTH = null;
 async function loadProfile(){
 
   if(!tg?.initData){
+    alert("❗ Telegram WebApp data नहीं मिला — कृपया bot से open करो");
     document.getElementById("char-card").innerHTML =
       "⚠️ Open inside Telegram WebApp.";
     return;
@@ -77,37 +79,57 @@ async function loadProfile(){
   });
 
   const data = await res.json();
+
   if(!data.ok){
+    alert("❌ Auth failed — server reject");
     document.getElementById("char-card").innerHTML = "❌ Auth failed.";
     return;
   }
 
   AUTH = data;
-  const user = data.user;
 
-  // 🔥 TOP HEADER SYNC (THIS WAS MISSING)
-  document.getElementById("name").innerText = user.fullname || "Player";
+  const user = data.user;
+  const tgUser = tg?.initDataUnsafe?.user || {};
+
+  // 🔍 DEBUG (temporary)
+  alert(
+    "DB USER: " + JSON.stringify(user) +
+    "\n\nTG USER: " + JSON.stringify(tgUser)
+  );
+
+  // fallback name
+  const fullname =
+    user.fullname?.trim() ||
+    ((tgUser.first_name || "") + (tgUser.last_name ? " " + tgUser.last_name : ""));
+
+  const username =
+    user.username ||
+    tgUser.username ||
+    "";
+
+  // 🔥 HEADER UPDATE
+  document.getElementById("name").innerText = fullname || "Player";
 
   document.getElementById("username").innerText =
-    user.username ? "@" + user.username : "@unknown";
+    username ? "@" + username : "@unknown";
 
   document.getElementById("uid").innerText = "ID: " + user.telegramId;
 
   document.getElementById("avatar").src =
-    tg?.initDataUnsafe?.user?.photo_url ||
-    "https://api.dicebear.com/7.x/thumbs/svg?seed=" + user.telegramId;
+    tgUser.photo_url ||
+    "https://api.dicebear.com/7.x/thumbs/svg?seed=" + (user.telegramId || "guest");
 
   document.getElementById("coinsMini").innerText = user.coins || 0;
 
-  // bottom card (still works)
-  document.getElementById("p-name").innerText = user.fullname;
+  // 🔽 lower profile card
+  document.getElementById("p-name").innerText = fullname || "Player";
   document.getElementById("p-username").innerText =
-    user.username ? "@" + user.username : "—";
+    username ? "@" + username : "—";
   document.getElementById("p-id").innerText = "ID: " + user.telegramId;
 
   document.getElementById("p-avatar").src =
-    tg?.initDataUnsafe?.user?.photo_url ||
-    "https://api.dicebear.com/7.x/thumbs/svg?seed=" + user.telegramId;
+    tgUser.photo_url ||
+    "https://api.dicebear.com/7.x/thumbs/svg?seed=" + (user.telegramId || "guest");
 
   document.getElementById("coins").innerHTML =
     "<b>Coins:</b> " + (user.coins || 0);
@@ -130,7 +152,6 @@ async function loadProfile(){
     <p>⚡ Speed: <b>${c.stats.speed}</b></p>
   `;
 
-  // simple demo XP bar
   document.getElementById("xpBar").style.width =
     Math.min(100, c.level * 10) + "%";
 }
