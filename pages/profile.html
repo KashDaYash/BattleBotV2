@@ -88,16 +88,19 @@ async function loadProfile(){
 
   const user = data.user;
 
-  document.getElementById("p-name").innerText = user.fullname;
-  document.getElementById("p-username").innerText =
-    user.username ? "@" + user.username : "—";
-  document.getElementById("p-id").innerText = "ID: " + user.telegramId;
+  // UPDATE HEADER (top card)
+document.getElementById("name").innerText = user.fullname || "Player";
 
-  document.getElementById("p-avatar").src =
-    tg?.initDataUnsafe?.user?.photo_url ||
-    "https://api.dicebear.com/7.x/thumbs/svg?seed=" + user.telegramId;
+document.getElementById("username").innerText =
+  user.username ? "@" + user.username : "@unknown";
 
-  document.getElementById("coinsMini").innerText = (user.coins || 0);
+document.getElementById("uid").innerText = "ID: " + user.telegramId;
+
+document.getElementById("avatar").src =
+  tg?.initDataUnsafe?.user?.photo_url ||
+  "https://api.dicebear.com/7.x/thumbs/svg?seed=" + user.telegramId;
+
+document.getElementById("coinsMini").innerText = user.coins || 0;
   const c = data.character;
   // basic XP bar percent (demo: level * 10)
   const percent = Math.min(100, c.level * 10);
