@@ -121,3 +121,39 @@ document.getElementById("dailyBtn").onclick = async () => {
     alert("⏳ " + data.message);
   }
 };
+
+// -------------- ARENA FIGHT -------------- //
+async function startFight(){
+
+  if(!AUTH) await authUser();
+  if(!AUTH) return;
+
+  const res = await fetch("/api/battle", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ telegramId: AUTH.user.telegramId })
+  });
+
+  const data = await res.json();
+
+  if(!data.ok) return alert("Battle error");
+
+  let text = "";
+  data.log.forEach(l => text += l + "\n");
+
+  if(data.win){
+    text += `\n🎉 Victory!\n+${data.reward.coins} coins\n+${data.reward.xp} XP`;
+  } else {
+    text += `\n💀 Defeat...`;
+  }
+
+  alert(text);
+
+  loadProfile();
+}
+
+document.getElementById("arenaBox").innerHTML =
+  `<button onclick="startFight()" style="
+     padding:10px;border:none;border-radius:14px;background:#ff7675;color:#000;width:100%">
+     ⚔ Start Battle
+   </button>`;
