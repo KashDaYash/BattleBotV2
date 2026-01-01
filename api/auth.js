@@ -1,75 +1,53 @@
-import crypto from "crypto";
-import { connectDB } from "./mongo.js";
-import User from "./models/User.js";
-import Character from "./models/Character.js";
-import { getRandomCharacter } from "./utils/characters.js";
-
-function verify(initData, botToken) {
-  const urlParams = new URLSearchParams(initData);
-  const data = [];
-
-  urlParams.forEach((value, key) => {
-    if (key !== "hash") data.push(`${key}=${value}`);
-  });
-
-  data.sort();
-  const dataCheck = data.join("\n");
-
-  const secret = crypto
-    .createHmac("sha256", "WebAppData")
-    .update(botToken)
-    .digest();
-
-  const hash = crypto
-    .createHmac("sha256", secret)
-    .update(dataCheck)
-    .digest("hex");
-
-  return hash === urlParams.get("hash");
-}
-
 export default async function handler(req, res) {
-  await connectDB(process.env.MONGO_URI);
 
-  let body = req.body;
-  if (!body) {
-    body = await new Promise(resolve => {
-      let d = "";
-      req.on("data", c => (d += c));
-      req.on("end", () => resolve(JSON.parse(d || "{}")));
+  if (req.method !== "POST") {
+    return res.status(200).json({
+      ok: false,
+      message: "Use POST"
     });
   }
 
-  const { initData } = body;
+  try {
+    const { initData } = req.body;
 
-  if (!initData) return res.status(400).json({ error: "initData required" });
+    if (!initData) {
+      return res.status(400).json({
+        ok: false,
+        message: "Missing initData"
+      });
+    }
 
-  const ok = verify(initData, process.env.BOT_TOKEN);
+    // ⚠️ placeholder demo user (backend connection later)
+    const demoUser = {
+      telegramId: 1,
+      fullname: "Demo Player",
+      username: "demo",
+      coins: 0
+    };
 
-  if (!ok) return res.status(401).json({ error: "invalid signature" });
+    const demoCharacter = {
+      name: "Knight",
+      level: 1,
+      imageUrl: "https://i.imgur.com/5QdQH.jpg",
+      stats: {
+        hp: 50,
+        attack: 12,
+        defense: 8,
+        speed: 6
+      }
+    };
 
-  // extract user
-  const params = new URLSearchParams(initData);
-  const user = JSON.parse(params.get("user"));
-
-  let dbUser = await User.findOne({ telegramId: user.id });
-
-  if (!dbUser) {
-    dbUser = await User.create({
-      telegramId: user.id,
-      username: user.username || "",
-      fullname: `${user.first_name || ""} ${user.last_name || ""}`.trim()
+    return res.status(200).json({
+      ok: true,
+      user: demoUser,
+      character: demoCharacter
     });
 
-    const starter = getRandomCharacter();
-    await Character.create({ userId: dbUser._id, ...starter });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({
+      ok: false,
+      message: "Server crash"
+    });
   }
-
-  const character = await Character.findOne({ userId: dbUser._id });
-
-  res.json({
-    ok: true,
-    user: dbUser,
-    character
-  });
 }
