@@ -8,12 +8,14 @@ document.querySelectorAll("nav button").forEach(btn => {
 });
 
 async function load(page) {
-
   const html = await fetch(`/pages/${page}.html`).then(r => r.text());
   view.innerHTML = html;
 
   if (page === "profile") {
-    setTimeout(initProfile, 50);   // ⭐ ensure DOM exists
+    setTimeout(() => {
+      alert("INIT PROFILE CALLED");
+      initProfile();
+    }, 80);
   }
 }
 
@@ -23,82 +25,98 @@ let AUTH = null;
 
 async function initProfile() {
 
-  if (!tg?.initData) {
-    document.getElementById("char-card").innerHTML =
-      "⚠️ Open this from Telegram bot.";
-    return;
-  }
+  try {
 
-  const res = await fetch("/api/auth", {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({ initData: tg.initData })
-  });
+    alert("CHECK: telegram data");
 
-  const data = await res.json();
-  if (!data.ok) {
-    document.getElementById("char-card").innerHTML = "❌ Auth failed.";
-    return;
-  }
+    if (!tg?.initData) {
+      alert("❗ NO TELEGRAM initData — bot se open karo");
+      document.getElementById("char-card").innerHTML =
+        "⚠️ Open from Telegram bot.";
+      return;
+    }
 
-  AUTH = data;
-  const user = data.user;
-  const t = tg?.initDataUnsafe?.user || {};
+    alert("CALLING /api/auth");
 
-  const fullname =
-    user.fullname || `${t.first_name || ""} ${t.last_name || ""}`.trim();
+    const res = await fetch("/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: tg.initData })
+    });
 
-  const username =
-    user.username || t.username || "";
+    const data = await res.json();
 
-  // HEADER
-  document.getElementById("name").innerText = fullname || "Player";
-  document.getElementById("username").innerText =
-    username ? "@" + username : "@unknown";
-  document.getElementById("uid").innerText = "ID: " + user.telegramId;
+    alert("AUTH RESPONSE: " + JSON.stringify(data));
 
-  document.getElementById("avatar").src =
-    t.photo_url ||
-    `https://api.dicebear.com/7.x/thumbs/svg?seed=${user.telegramId}`;
+    if (!data.ok) {
+      document.getElementById("char-card").innerHTML = "❌ Auth failed.";
+      return;
+    }
 
-  document.getElementById("coinsMini").innerText = user.coins || 0;
+    AUTH = data;
 
-  // LOWER BOX
-  document.getElementById("p-name").innerText = fullname;
-  document.getElementById("p-username").innerText =
-    username ? "@" + username : "—";
-  document.getElementById("p-id").innerText = "ID: " + user.telegramId;
+    const user = data.user;
+    const t = tg?.initDataUnsafe?.user || {};
 
-  document.getElementById("p-avatar").src =
-    t.photo_url ||
-    `https://api.dicebear.com/7.x/thumbs/svg?seed=${user.telegramId}`;
+    const fullname =
+      user.fullname || `${t.first_name || ""} ${t.last_name || ""}`.trim();
 
-  document.getElementById("coins").innerHTML =
-    "<b>Coins:</b> " + (user.coins || 0);
+    const username =
+      user.username || t.username || "";
 
-  // CHARACTER
-  const c = data.character;
+    // HEADER
+    document.getElementById("name").innerText = fullname || "Player";
+    document.getElementById("username").innerText =
+      username ? "@" + username : "@unknown";
+    document.getElementById("uid").innerText = "ID: " + user.telegramId;
 
-  document.getElementById("char-card").innerHTML = `
-    <div style="display:flex;gap:10px;align-items:center">
-      <img src="${c.imageUrl}"
-           style="width:90px;height:90px;border-radius:18px;object-fit:cover">
-      <div>
-        <h4 style="margin:0">${c.name}</h4>
-        <small>Level ${c.level}</small>
+    document.getElementById("avatar").src =
+      t.photo_url ||
+      `https://api.dicebear.com/7.x/thumbs/svg?seed=${user.telegramId}`;
+
+    document.getElementById("coinsMini").innerText = user.coins || 0;
+
+    // LOWER CARD
+    document.getElementById("p-name").innerText = fullname;
+    document.getElementById("p-username").innerText =
+      username ? "@" + username : "—";
+    document.getElementById("p-id").innerText = "ID: " + user.telegramId;
+
+    document.getElementById("p-avatar").src =
+      t.photo_url ||
+      `https://api.dicebear.com/7.x/thumbs/svg?seed=${user.telegramId}`;
+
+    document.getElementById("coins").innerHTML =
+      "<b>Coins:</b> " + (user.coins || 0);
+
+    const c = data.character;
+
+    document.getElementById("char-card").innerHTML = `
+      <div style="display:flex;gap:10px;align-items:center">
+        <img src="${c.imageUrl}"
+             style="width:90px;height:90px;border-radius:18px;object-fit:cover">
+        <div>
+          <h4 style="margin:0">${c.name}</h4>
+          <small>Level ${c.level}</small>
+        </div>
       </div>
-    </div>
-    <hr>
-    ❤️ HP: <b>${c.stats.hp}</b><br>
-    ⚔ Attack: <b>${c.stats.attack}</b><br>
-    🛡 Defense: <b>${c.stats.defense}</b><br>
-    ⚡ Speed: <b>${c.stats.speed}</b>
-  `;
+      <hr>
+      ❤️ HP: <b>${c.stats.hp}</b><br>
+      ⚔ Attack: <b>${c.stats.attack}</b><br>
+      🛡 Defense: <b>${c.stats.defense}</b><br>
+      ⚡ Speed: <b>${c.stats.speed}</b>
+    `;
 
-  document.getElementById("xpBar").style.width =
-    Math.min(100, c.level * 10) + "%";
+    document.getElementById("xpBar").style.width =
+      Math.min(100, c.level * 10) + "%";
 
-  document.getElementById("dailyBtn").onclick = claimDaily;
+    document.getElementById("dailyBtn").onclick = claimDaily;
+
+    alert("PROFILE DONE ✔");
+
+  } catch (e) {
+    alert("ERROR: " + e.message);
+  }
 }
 
 async function claimDaily() {
@@ -106,7 +124,7 @@ async function claimDaily() {
 
   const res = await fetch("/api/daily", {
     method: "POST",
-    headers: {"Content-Type":"application/json"},
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ telegramId: AUTH.user.telegramId })
   });
 
