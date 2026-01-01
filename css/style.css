@@ -21,8 +21,7 @@ body{
   border-radius:22px;
   box-shadow:0 14px 40px rgba(0,0,0,.25);
 }
-
-.header{margin:10px;padding:12px}
+.header{margin:10px 10px 4px;padding:14px}
 .user-row{display:flex;align-items:center;gap:10px}
 
 .avatar{
