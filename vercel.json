@@ -1,9 +1,6 @@
 {
   "builds": [
     { "src": "api/*.js", "use": "@vercel/node" },
-    { "src": "{
-  "builds": [
-    { "src": "api/*.js", "use": "@vercel/node" },
     { "src": "index.html", "use": "@vercel/static" },
     { "src": "css/*", "use": "@vercel/static" },
     { "src": "script.js", "use": "@vercel/static" }
@@ -15,16 +12,6 @@
     { "src": "/css/(.*)", "dest": "/css/$1" },
 
     { "src": "/script.js", "dest": "/script.js" },
-
-    { "src": "/(.*)", "dest": "/index.html" }
-  ]
-} "use": "@vercel/static" },
-    { "src": "css/*", "use": "@vercel/static" }
-  ],
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-
-    { "src": "/css/(.*)", "dest": "/css/$1" },
 
     { "src": "/(.*)", "dest": "/index.html" }
   ]
