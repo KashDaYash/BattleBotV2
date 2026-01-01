@@ -1,42 +1,37 @@
-const view = document.getElementById("view");
 const tg = window.Telegram?.WebApp;
 tg?.expand();
 
-let CURRENT_PAGE = "profile";
+const view = document.getElementById("view");
 
 document.querySelectorAll("nav button").forEach(btn => {
   btn.onclick = () => load(btn.dataset.page);
 });
 
 async function load(page) {
-  CURRENT_PAGE = page;
 
-  const res = await fetch(`/pages/${page}.html`);
-  const html = await res.text();
+  const html = await fetch(`/pages/${page}.html`).then(r => r.text());
   view.innerHTML = html;
 
-  // ⭐ AFTER HTML loads — run page logic
-  if (page === "profile") initProfile();
+  if (page === "profile") {
+    setTimeout(initProfile, 50);   // ⭐ ensure DOM exists
+  }
 }
 
 load("profile");
 
-// ---------------- PROFILE LOGIC ---------------- //
-
 let AUTH = null;
 
 async function initProfile() {
-  const tgUser = tg?.initDataUnsafe?.user;
 
   if (!tg?.initData) {
     document.getElementById("char-card").innerHTML =
-      "⚠️ Open inside Telegram WebApp.";
+      "⚠️ Open this from Telegram bot.";
     return;
   }
 
   const res = await fetch("/api/auth", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {"Content-Type":"application/json"},
     body: JSON.stringify({ initData: tg.initData })
   });
 
@@ -48,16 +43,13 @@ async function initProfile() {
 
   AUTH = data;
   const user = data.user;
+  const t = tg?.initDataUnsafe?.user || {};
 
   const fullname =
-    user.fullname ||
-    ((tgUser?.first_name || "") +
-      (tgUser?.last_name ? " " + tgUser.last_name : ""));
+    user.fullname || `${t.first_name || ""} ${t.last_name || ""}`.trim();
 
   const username =
-    user.username ||
-    tgUser?.username ||
-    "";
+    user.username || t.username || "";
 
   // HEADER
   document.getElementById("name").innerText = fullname || "Player";
@@ -66,20 +58,20 @@ async function initProfile() {
   document.getElementById("uid").innerText = "ID: " + user.telegramId;
 
   document.getElementById("avatar").src =
-    tgUser?.photo_url ||
-    "https://api.dicebear.com/7.x/thumbs/svg?seed=" + (user.telegramId || "guest");
+    t.photo_url ||
+    `https://api.dicebear.com/7.x/thumbs/svg?seed=${user.telegramId}`;
 
   document.getElementById("coinsMini").innerText = user.coins || 0;
 
-  // LOWER PROFILE CARD
+  // LOWER BOX
   document.getElementById("p-name").innerText = fullname;
   document.getElementById("p-username").innerText =
     username ? "@" + username : "—";
   document.getElementById("p-id").innerText = "ID: " + user.telegramId;
 
   document.getElementById("p-avatar").src =
-    tgUser?.photo_url ||
-    "https://api.dicebear.com/7.x/thumbs/svg?seed=" + (user.telegramId || "guest");
+    t.photo_url ||
+    `https://api.dicebear.com/7.x/thumbs/svg?seed=${user.telegramId}`;
 
   document.getElementById("coins").innerHTML =
     "<b>Coins:</b> " + (user.coins || 0);
@@ -97,10 +89,10 @@ async function initProfile() {
       </div>
     </div>
     <hr>
-    <p>❤️ HP: <b>${c.stats.hp}</b></p>
-    <p>⚔ Attack: <b>${c.stats.attack}</b></p>
-    <p>🛡 Defense: <b>${c.stats.defense}</b></p>
-    <p>⚡ Speed: <b>${c.stats.speed}</b></p>
+    ❤️ HP: <b>${c.stats.hp}</b><br>
+    ⚔ Attack: <b>${c.stats.attack}</b><br>
+    🛡 Defense: <b>${c.stats.defense}</b><br>
+    ⚡ Speed: <b>${c.stats.speed}</b>
   `;
 
   document.getElementById("xpBar").style.width =
@@ -114,14 +106,14 @@ async function claimDaily() {
 
   const res = await fetch("/api/daily", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {"Content-Type":"application/json"},
     body: JSON.stringify({ telegramId: AUTH.user.telegramId })
   });
 
   const data = await res.json();
 
   if (data.ok) {
-    alert("🎁 Claimed! Coins: " + data.coins);
+    alert("🎁 Claimed: " + data.coins);
     initProfile();
   } else {
     alert("⏳ wait " + data.cooldown + " minutes");
