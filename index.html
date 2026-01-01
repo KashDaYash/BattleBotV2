@@ -1,30 +1,86 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>BattleBot WebApp</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BattleBot V2</title>
 
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="/css/style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 
 <body>
 
-
 <div class="app">
 
-  <main id="view"></main>
+  <!-- PROFILE -->
+  <section id="screen-profile" class="screen active">
 
+    <header class="glass header">
+      <div style="display:flex;gap:10px;align-items:center">
+        <img id="avatar" class="avatar">
+        <div>
+          <h2 id="name">Player</h2>
+          <p id="username" style="opacity:.8">@username</p>
+
+          <div style="margin-top:6px">
+            💰 <b id="coinsMini">0</b>
+          </div>
+
+          <small id="uid">ID —</small>
+        </div>
+      </div>
+    </header>
+
+    <div class="glass" style="margin:12px;padding:12px">
+      <h3>Profile</h3>
+
+      <div id="profileBox">
+        Loading…
+      </div>
+
+      <button id="dailyBtn"
+        style="margin-top:12px;width:100%;padding:10px;border:none;border-radius:14px;background:#2ecc71;color:white">
+        🎁 Claim Daily Reward
+      </button>
+    </div>
+
+  </section>
+
+  <!-- ARENA -->
+  <section id="screen-arena" class="screen">
+    <div class="glass" style="margin:12px;padding:12px">
+      <h3>Arena</h3>
+      <div id="arenaBox">Coming next…</div>
+    </div>
+  </section>
+
+  <!-- SHOP -->
+  <section id="screen-shop" class="screen">
+    <div class="glass" style="margin:12px;padding:12px">
+      <h3>Shop</h3>
+      <div id="shopBox">Coming soon…</div>
+    </div>
+  </section>
+
+  <!-- LEADERBOARD -->
+  <section id="screen-leaderboard" class="screen">
+    <div class="glass" style="margin:12px;padding:12px">
+      <h3>Leaderboard</h3>
+      <div id="leaderBox">Coming soon…</div>
+    </div>
+  </section>
+
+  <!-- NAV -->
   <nav class="glass nav">
-    <button data-page="arena">🥊</button>
-    <button data-page="shop">🛒</button>
-    <button data-page="leaderboard">🏆</button>
-    <button data-page="profile">👤</button>
+    <button data-go="arena">🥊</button>
+    <button data-go="shop">🛒</button>
+    <button data-go="leaderboard">🏆</button>
+    <button data-go="profile">👤</button>
   </nav>
 
-</div> 
+</div>
 
-<script src="/js/app.js"></script>
+<script src="/script.js"></script>
 </body>
 </html>
