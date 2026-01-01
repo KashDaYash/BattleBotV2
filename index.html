@@ -1,21 +1,40 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>BattleBot WebApp</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BattleBot WebApp</title>
 
-  <link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="/css/style.css" />
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 
 <body>
 
-  <header class="header">
-    <h1>BattleBot</h1>
+<div class="app">
+
+  <header class="glass header">
+    <div class="user-row">
+      <img id="avatar" class="avatar">
+      <div>
+        <h2 id="name">Player</h2>
+        <p id="username">@username</p>
+        <small id="uid">ID —</small>
+      </div>
+    </div>
   </header>
 
-  <div id="main"></div>
+  <main id="view"></main>
 
-  <script src="/js/app.js"></script>
+  <nav class="glass nav">
+    <button data-page="arena">🥊</button>
+    <button data-page="shop">🛒</button>
+    <button data-page="leaderboard">🏆</button>
+    <button data-page="profile">👤</button>
+  </nav>
+
+</div>
+
+<script src="/js/app.js"></script>
 </body>
 </html>
