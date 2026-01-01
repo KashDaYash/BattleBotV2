@@ -97,9 +97,7 @@ async function loadProfile(){
     tg?.initDataUnsafe?.user?.photo_url ||
     "https://api.dicebear.com/7.x/thumbs/svg?seed=" + user.telegramId;
 
-  document.getElementById("coins").innerHTML =
-    "<b>Coins:</b> " + (user.coins || 0);
-
+  document.getElementById("coinsMini").innerText = (user.coins || 0);
   const c = data.character;
 
   document.getElementById("char-card").innerHTML = `
