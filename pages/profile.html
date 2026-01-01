@@ -99,10 +99,10 @@ async function loadProfile(){
 
   document.getElementById("coinsMini").innerText = (user.coins || 0);
   const c = data.character;
-// basic XP bar percent (demo: level * 10)
-const percent = Math.min(100, c.level * 10);
-document.getElementById("xpBar").style.width = percent + "%"; 
-  document.getElementById("char-card").innerHTML = `
+  // basic XP bar percent (demo: level * 10)
+  const percent = Math.min(100, c.level * 10);
+  document.getElementById("xpBar").style.width = percent + "%"; 
+     document.getElementById("char-card").innerHTML = `
     <div style="display:flex;gap:10px;align-items:center">
       <img src="${c.imageUrl}"
            style="width:90px;height:90px;border-radius:18px;object-fit:cover">
