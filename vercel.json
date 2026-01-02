@@ -14,5 +14,5 @@
     { "src": "/(.*)", "dest": "/script.js" },
 
     { "src": "/(.*)", "dest": "/index.html" }
-}
+  ]
 }
