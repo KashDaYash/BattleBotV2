@@ -5,10 +5,14 @@ const tg = window.Telegram?.WebApp;
 tg?.ready();
 tg?.expand();
 
-// Testing Mode: Agar Telegram me nahi khula hai to True
+// Testing Mode
 const isDebug = !tg.initData; 
 
 let AUTH = null;
+
+// GLOBAL VARIABLES FOR BATTLE
+let activeEnemy = null; // Store current monster data
+let playerCurrentHp = 0; // Track local HP during fight
 
 // =========================================
 // 2. NAVIGATION SYSTEM
@@ -20,30 +24,25 @@ const screens = {
   leaderboard: document.getElementById("screen-leaderboard"),
 };
 
-// Bottom Nav Click Listeners
 document.querySelectorAll("nav button").forEach(btn => {
   btn.onclick = () => show(btn.dataset.go);
 });
 
 function show(name){
-  // Sab screens chupao
   Object.values(screens).forEach(s => s.classList.remove("active"));
-  // Jo mangi hai wo dikhao
   screens[name].classList.add("active");
   
-  // Specific Actions
-  if(name === "profile") loadProfile(false); // False = User clicked, show alerts if error
-  if(name === "arena") resetArenaUI();      // Arena hamesha Menu se start ho
+  if(name === "profile") loadProfile(false);
+  if(name === "arena") resetArenaUI();
 }
 
 
 // =========================================
-// 3. AUTHENTICATION (Login)
+// 3. AUTHENTICATION
 // =========================================
 async function authUser(){
-  // A. Browser Testing (Fake Data)
   if (isDebug) {
-    console.warn("⚠️ Running in Browser Mode (Mock Data)");
+    console.warn("⚠️ Browser Mode");
     AUTH = {
       user: {
         telegramId: 123456,
@@ -59,7 +58,6 @@ async function authUser(){
     return;
   }
 
-  // B. Real Telegram Login
   try {
     const res = await fetch("/api/auth", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -76,44 +74,30 @@ async function authUser(){
     if(data.ok) AUTH = data;
     else alert("❌ Login Failed: " + data.message);
 
-  } catch(e) {
-    alert("❌ Connection Error (Auth): " + e.message);
-  }
+  } catch(e) { alert("Connection Error: " + e.message); }
 }
 
 
 // =========================================
 // 4. PROFILE LOADER (Realtime)
 // =========================================
-// silent = true (Background refresh, No alerts)
-// silent = false (User click, Show alerts)
 async function loadProfile(silent = false){
-  
-  // 1. Local Data (Instant Show)
   const tgUser = tg?.initDataUnsafe?.user || {};
   if(tgUser.id && !silent) {
      document.getElementById("name").innerText = tgUser.first_name;
      document.getElementById("avatar").src = tgUser.photo_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${tgUser.id}`;
   }
 
-  // 2. Auth Check
   if(!AUTH) await authUser();
   if(!AUTH) return; 
 
   try {
-    // 3. Fetch Data
     const res = await fetch("/api/syncUser", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ telegramId: AUTH.user.telegramId })
     });
 
-    if(!res.ok) {
-        if(!silent) {
-            const txt = await res.text();
-            alert("⚠️ API Error (Sync): " + res.status + "\n" + txt.slice(0, 100));
-        }
-        return;
-    }
+    if(!res.ok && !silent) return;
 
     const data = await res.json();
     
@@ -121,11 +105,9 @@ async function loadProfile(silent = false){
       const u = data.user;
       const c = u.character;
 
-      // 4. Update UI
       document.getElementById("coinsMini").innerText = u.coins;
       document.getElementById("name").innerText = u.fullname; 
       
-      // Stats Box HTML
       document.getElementById("profileBox").innerHTML = `
         <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:12px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
@@ -150,13 +132,10 @@ async function loadProfile(silent = false){
         </div>
       `;
     } 
-
-  } catch (e) {
-    if(!silent) alert("❌ Catch Error: " + e.message);
-  }
+  } catch (e) { if(!silent) console.error(e); }
 }
 
-// 🔥 Realtime Engine (Auto-Refresh every 3 seconds)
+// Auto Refresh Profile
 setInterval(() => {
   if(document.getElementById("screen-profile").classList.contains("active")) {
     loadProfile(true); 
@@ -165,130 +144,169 @@ setInterval(() => {
 
 
 // =========================================
-// 5. DAILY REWARD SYSTEM
+// 5. DAILY REWARD
 // =========================================
 document.getElementById("dailyBtn").onclick = async () => {
   if(!AUTH) await authUser();
-  
   try {
       const res = await fetch("/api/daily", {
         method:"POST", headers:{ "Content-Type":"application/json" },
         body: JSON.stringify({ telegramId: AUTH.user.telegramId })
       });
-      
       const data = await res.json();
       alert(data.ok ? `🎁 You got ${data.reward} coins!` : `⏳ ${data.message}`);
-      
       if(data.ok) loadProfile(false); 
-
-  } catch(e) {
-      alert("Error: " + e.message);
-  }
+  } catch(e) { alert("Error: " + e.message); }
 };
 
 
 // =========================================
-// 6. ARENA & BATTLE SYSTEM (PvP + PvM)
+// 6. ARENA SYSTEM (New Turn-Based Logic)
 // =========================================
 
-// A. Reset UI (Back to Menu)
+// A. Reset UI
 function resetArenaUI() {
   document.getElementById("arena-select").style.display = "block";
+  document.getElementById("arena-preview").style.display = "none";
   document.getElementById("arena-fight").style.display = "none";
-  document.getElementById("backToArenaBtn").style.display = "none";
 }
 
-// B. Start Battle
-async function startBattle(mode) {
+// B. Step 1: SEARCH MONSTER
+async function searchMonster() {
   if(!AUTH) await authUser();
 
-  // Switch Screens
-  document.getElementById("arena-select").style.display = "none";
-  document.getElementById("arena-fight").style.display = "block";
-  
-  // Reset Visuals
-  document.getElementById("enemyHpBar").style.width = "100%";
-  document.getElementById("playerHpBar").style.width = "100%";
-  document.getElementById("enemyHpText").innerText = "HP: 100%";
-  document.getElementById("playerHpText").innerText = "100%";
-  
-  document.getElementById("enemyName").innerText = "Searching...";
-  document.getElementById("enemyEmoji").innerText = mode === 'pvp' ? "🤺" : "🦖";
-  
-  const logBox = document.getElementById("battleLog");
-  logBox.innerHTML = "<p>🔍 Searching for opponent...</p>";
-  
+  // Button loading state
+  const btn = event?.target; 
+  if(btn) btn.innerText = "Searching...";
+
   try {
-    // API Call
     const res = await fetch("/api/battle", {
-      method:"POST", headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ telegramId: AUTH.user.telegramId, mode: mode })
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegramId: AUTH.user.telegramId, action: 'search' })
     });
-
     const data = await res.json();
-    if(!data.ok) { 
-        alert("Error: " + data.message); 
-        resetArenaUI(); 
-        return; 
-    }
 
-    // Found Opponent
-    document.getElementById("enemyName").innerText = data.enemyName;
-    logBox.innerHTML = ""; // Clear log
-
-    // 🔥 ANIMATION LOOP (Play Turn-by-Turn)
-    let step = 0;
+    // Show Preview
+    document.getElementById("arena-select").style.display = "none";
+    document.getElementById("arena-preview").style.display = "block";
     
-    function playTurn() {
-        if (step >= data.events.length) {
-            // End of Fight
-            document.getElementById("backToArenaBtn").style.display = "block";
-            if(data.win) loadProfile(true); // Update coins in background
-            return;
-        }
+    // Set Data
+    activeEnemy = data.enemy;
+    document.getElementById("prevName").innerText = activeEnemy.name;
+    document.getElementById("prevEmoji").innerText = activeEnemy.emoji;
+    document.getElementById("prevHp").innerText = activeEnemy.hp;
+    document.getElementById("prevAtk").innerText = activeEnemy.atk;
+    document.getElementById("prevCoin").innerText = activeEnemy.coins;
+    document.getElementById("prevXp").innerText = activeEnemy.xp;
 
-        const event = data.events[step];
-        
-        // 1. Add Log Text
-        const p = document.createElement("p");
-        p.innerText = event.text;
-        p.style.opacity = "0";
-        p.style.animation = "fadeIn 0.3s forwards"; // CSS animation
-        
-        // Color coding
-        if(event.text.includes("VICTORY")) p.style.color = "#2ecc71";
-        if(event.text.includes("DEFEAT")) p.style.color = "#e74c3c";
-        if(event.text.includes("You hit")) p.style.color = "#3498db";
-        
-        logBox.appendChild(p);
-        logBox.scrollTop = logBox.scrollHeight;
+    if(btn) btn.innerText = "Find Monster (PvM)"; // Reset Button Text
 
-        // 2. Update HP Bars (Math)
-        // Enemy HP
-        let e_pct = (event.e_hp / event.e_max) * 100;
-        if(e_pct < 0) e_pct = 0;
-        document.getElementById("enemyHpBar").style.width = e_pct + "%";
-        document.getElementById("enemyHpText").innerText = "HP: " + Math.floor(e_pct) + "%";
-        
-        // Player HP
-        let p_pct = (event.p_hp / event.p_max) * 100;
-        if(p_pct < 0) p_pct = 0;
-        document.getElementById("playerHpBar").style.width = p_pct + "%";
-        document.getElementById("playerHpText").innerText = Math.floor(p_pct) + "%";
-
-        // Next Turn (Delay 0.8s)
-        step++;
-        setTimeout(playTurn, 800); 
-    }
-
-    // Start Animation
-    playTurn();
-
-  } catch(e) {
-      alert("Network Error: " + e.message);
-      resetArenaUI();
-  }
+  } catch(e) { alert("Error: " + e.message); resetArenaUI(); }
 }
 
-// Start App
+// C. Step 2: START COMBAT (User accepted fight)
+function startCombat() {
+  document.getElementById("arena-preview").style.display = "none";
+  document.getElementById("arena-fight").style.display = "block";
+
+  // Init UI
+  document.getElementById("battleEnemyName").innerText = activeEnemy.name;
+  document.getElementById("battleEnemyEmoji").innerText = activeEnemy.emoji;
+  
+  // Set HP Bars
+  const maxHp = AUTH.user.character.stats.hp;
+  playerCurrentHp = maxHp; // Full HP at start
+  updateBars(activeEnemy.hp, activeEnemy.maxHp, playerCurrentHp, maxHp);
+
+  document.getElementById("battleLog").innerHTML = `<p style="color:yellow; margin-bottom:5px;">⚠️ You encountered a ${activeEnemy.name}!</p>`;
+  document.getElementById("fightControls").style.display = "flex";
+  document.getElementById("fightEndBtn").style.display = "none";
+}
+
+// D. Step 3: PLAYER ATTACK TURN
+async function attackTurn() {
+  const logBox = document.getElementById("battleLog");
+  
+  // Disable Button
+  const atkBtn = document.querySelector("#fightControls button:last-child");
+  atkBtn.disabled = true;
+  atkBtn.innerText = "Wait...";
+
+  try {
+    const res = await fetch("/api/battle", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        telegramId: AUTH.user.telegramId, 
+        action: 'attack',
+        currentEnemy: activeEnemy,
+        playerHp: playerCurrentHp
+      })
+    });
+    const data = await res.json();
+
+    // Update Local State
+    activeEnemy.hp = data.newEnemyHp;
+    playerCurrentHp = data.newPlayerHp;
+
+    // Show Logs
+    data.log.forEach(l => {
+        const p = document.createElement("p");
+        p.innerText = l.msg;
+        p.style.color = l.type === 'player' ? '#3498db' : '#e74c3c';
+        p.style.marginBottom = "4px";
+        p.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
+        logBox.appendChild(p);
+    });
+    logBox.scrollTop = logBox.scrollHeight;
+
+    // Update Bars
+    updateBars(activeEnemy.hp, activeEnemy.maxHp, playerCurrentHp, AUTH.user.character.stats.hp);
+
+    // Check Win/Loss
+    if(data.win) {
+        logBox.innerHTML += `<p style="color:#2ecc71; font-weight:bold; margin-top:10px; font-size:14px;">🏆 VICTORY! Earned ${activeEnemy.coins} coins.</p>`;
+        endFight(true);
+    } else if (data.playerDied) {
+        logBox.innerHTML += `<p style="color:red; font-weight:bold; margin-top:10px; font-size:14px;">💀 YOU DIED...</p>`;
+        endFight(false);
+    }
+
+  } catch(e) { alert("Error: " + e.message); }
+  
+  // Re-enable Button
+  atkBtn.disabled = false;
+  atkBtn.innerText = "⚔️ ATTACK";
+}
+
+// Helper: Update Bars
+function updateBars(eHp, eMax, pHp, pMax) {
+    let ePct = (eHp/eMax*100); if(ePct<0) ePct=0;
+    document.getElementById("battleEnemyBar").style.width = ePct + "%";
+    document.getElementById("battleEnemyHpText").innerText = eHp + " / " + eMax;
+    
+    let pPct = (pHp/pMax*100); if(pPct<0) pPct=0;
+    document.getElementById("battlePlayerBar").style.width = pPct + "%";
+    document.getElementById("battlePlayerHpText").innerText = pHp;
+}
+
+// Helper: End Fight
+function endFight(win) {
+    document.getElementById("fightControls").style.display = "none";
+    document.getElementById("fightEndBtn").style.display = "block";
+    if(win) loadProfile(true); // Update coins silently
+    
+    // Auto scroll to bottom
+    const logBox = document.getElementById("battleLog");
+    logBox.scrollTop = logBox.scrollHeight;
+}
+
+// E. Run Away
+function runAway() {
+    if(confirm("Are you sure you want to run?")) {
+        resetArenaUI();
+        alert("🏃 You ran away safely!");
+    }
+}
+
+// START APP
 show("profile");
