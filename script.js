@@ -10,7 +10,14 @@ let AUTH = null;
 let activeEnemy = null;
 let playerCurrentHp = 0;
 
-// 🗑️ NO MAPPING NEEDED (Sab DB se aayega)
+// 🔥 HELPER: Fix Image Path Automatically
+function resolveImg(imgName) {
+  if (!imgName) return "/images/HarutoHikari.jpg"; // Default
+  if (imgName.startsWith("http")) return imgName; // If URL
+  if (imgName.startsWith("/images/")) return imgName; // If already correct
+  // Agar sirf filename hai (ex: "Snirk.png"), to prefix lagao
+  return `/images/${imgName}`;
+}
 
 // =========================================
 // 2. NAVIGATION
@@ -38,8 +45,7 @@ function show(name){
 // =========================================
 async function authUser(){
   if(isDebug) { 
-    // Testing data (Path should include /images/)
-    AUTH = { user: { telegramId: 123, username: "debug", fullname: "Tester", coins: 999, character: { name: "Ryuujin Kai", image: "/images/RyuujinKai.jpg", level: 10, stats: { hp: 100, attack: 20, defense: 5, speed: 5 }, xp: 0, xpToNext: 100 } } }; 
+    AUTH = { user: { telegramId: 123, username: "debug", fullname: "Tester", coins: 999, character: { name: "Ryuujin Kai", image: "RyuujinKai.jpg", level: 10, stats: { hp: 100, attack: 20, defense: 5, speed: 5 }, xp: 0, xpToNext: 100 } } }; 
     return; 
   }
 
@@ -68,7 +74,6 @@ async function loadProfile(silent){
   if(!AUTH) return; 
 
   try {
-    // Sync User (Backend will auto-fix path if broken)
     const res = await fetch("/api/syncUser", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ telegramId: AUTH.user.telegramId })
@@ -78,13 +83,12 @@ async function loadProfile(silent){
     if(data.ok){
       const u = data.user;
       const c = u.character;
-      
-      AUTH.user = u; // Update local data
+      AUTH.user = u; 
 
       document.getElementById("coinsMini").innerText = u.coins;
       
-      // ✅ DIRECT DB IMAGE (Path is already correct: /images/Name.jpg)
-      const imgPath = c.image || "/images/HarutoHikari.jpg"; 
+      // ✅ USE SMART IMAGE RESOLVER
+      const imgPath = resolveImg(c.image);
 
       document.getElementById("profileBox").innerHTML = `
         <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; display:flex; gap:15px; align-items:center;">
@@ -148,11 +152,8 @@ async function searchMonster() {
     
     document.getElementById("prevName").innerText = activeEnemy.name;
     
-    // ✅ MONSTER IMAGE (Updated for /images/ path)
-    // api/battle.js me bhi image ka naam save karte waqt dhyaan dena hoga, 
-    // ya hum yahan prefix laga sakte hain agar wahan sirf naam hai.
-    // Assuming backend sends simple filename for monsters:
-    document.getElementById("prevImage").src = `/images/${activeEnemy.image}`;
+    // ✅ Use Resolver for Monster Image too
+    document.getElementById("prevImage").src = resolveImg(activeEnemy.image);
     
     document.getElementById("prevHp").innerText = activeEnemy.hp;
     document.getElementById("prevAtk").innerText = activeEnemy.atk;
@@ -166,13 +167,9 @@ function startCombat() {
   document.getElementById("arena-preview").style.display = "none";
   document.getElementById("arena-fight").style.display = "block";
   
-  // ✅ PLAYER IMAGE FROM DB (Full Path)
-  const pImg = AUTH.user.character.image || '/images/HarutoHikari.jpg';
-  
-  document.getElementById("battlePlayerImg").src = pImg;
-  
-  // ✅ MONSTER IMAGE
-  document.getElementById("battleEnemyImg").src = `/images/${activeEnemy.image}`;
+  // ✅ Resolver for Player & Enemy
+  document.getElementById("battlePlayerImg").src = resolveImg(AUTH.user.character.image);
+  document.getElementById("battleEnemyImg").src = resolveImg(activeEnemy.image);
   
   document.getElementById("battlePlayerName").innerText = AUTH.user.character.name;
   document.getElementById("battleEnemyName").innerText = activeEnemy.name;
