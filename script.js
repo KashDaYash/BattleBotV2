@@ -10,7 +10,7 @@ let AUTH = null;
 let activeEnemy = null;
 let playerCurrentHp = 0;
 
-// 🔥 IMAGE MAPPING (No more Rookie Bot)
+// 🔥 IMAGE MAPPING
 const CHAR_IMGS = {
   "Ryuujin Kai": "RyuujinKai.jpg",
   "Akari Yume": "AkariYume.jpg",
@@ -45,7 +45,6 @@ function show(name){
 // 3. AUTHENTICATION
 // =========================================
 async function authUser(){
-  // Testing Mode me bhi Random dikhana chahiye
   if(isDebug) { 
     AUTH = { user: { telegramId: 123, username: "debug", fullname: "Tester", coins: 999, character: { name: "Ryuujin Kai", level: 10, stats: { hp: 100, attack: 20, defense: 5, speed: 5 }, xp: 0, xpToNext: 100 } } }; 
     return; 
@@ -63,7 +62,7 @@ async function authUser(){
 }
 
 // =========================================
-// 4. PROFILE LOADER
+// 4. PROFILE LOADER (Path Fix Here)
 // =========================================
 async function loadProfile(silent){
   const tgUser = tg?.initDataUnsafe?.user || {};
@@ -89,12 +88,12 @@ async function loadProfile(silent){
 
       document.getElementById("coinsMini").innerText = u.coins;
       
-      // Image Selection
       const charImgName = CHAR_IMGS[c.name] || 'HarutoHikari.jpg';
       
+      // 🟢 FIX: Path changed to /public/images/
       document.getElementById("profileBox").innerHTML = `
         <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; display:flex; gap:15px; align-items:center;">
-          <img src="/images/${charImgName}" 
+          <img src="public/images/${charImgName}" 
                style="width:70px; height:70px; border-radius:10px; object-fit:cover; border:2px solid #fff; background:#000;">
           <div style="flex:1;">
              <div style="font-weight:bold; font-size:16px;">
@@ -153,7 +152,10 @@ async function searchMonster() {
     activeEnemy = data.enemy;
     
     document.getElementById("prevName").innerText = activeEnemy.name;
-    document.getElementById("prevImage").src = `/images/${activeEnemy.image}`;
+    
+    // 🟢 FIX: Monster Image Path also updated
+    document.getElementById("prevImage").src = `public/images/${activeEnemy.image}`;
+    
     document.getElementById("prevHp").innerText = activeEnemy.hp;
     document.getElementById("prevAtk").innerText = activeEnemy.atk;
     document.getElementById("prevCoin").innerText = activeEnemy.coins;
@@ -169,8 +171,10 @@ function startCombat() {
   const pName = AUTH.user.character.name;
   const pImgName = CHAR_IMGS[pName] || 'HarutoHikari.jpg';
   
-  document.getElementById("battlePlayerImg").src = `/images/${pImgName}`;
-  document.getElementById("battleEnemyImg").src = `/images/${activeEnemy.image}`;
+  // 🟢 FIX: Battle Screen Paths updated
+  document.getElementById("battlePlayerImg").src = `public/images/${pImgName}`;
+  document.getElementById("battleEnemyImg").src = `public/images/${activeEnemy.image}`;
+  
   document.getElementById("battlePlayerName").innerText = pName;
   document.getElementById("battleEnemyName").innerText = activeEnemy.name;
 
