@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     { name: "Ryuujin Kai", image: "/public/images/RyuujinKai.jpg" }, 
     { name: "Akari Yume", image: "/public/images/AkariYume.jpg" }, 
     { name: "Kurogane Raiden", image: "/public/images/KuroganeRaiden.jpg" }, 
-    { name: "Yasha Noctis", image: "/public/images/YashaNoctis.jpg" }, 
+    { name: "Yasha Noctis", image: "https://envs.sh/HqT.jpg" }, 
     { name: "Lumina", image: "/public/images/Lumina.jpg" }, 
     { name: "Haruto Hikari", image: "/public/images/HarutoHikari.jpg" }
   ];
