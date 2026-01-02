@@ -7,28 +7,25 @@ export default async function handler(req, res) {
   const searchParams = new URLSearchParams(initData);
   const user = JSON.parse(searchParams.get('user'));
 
-  // 🔥 CORRECT PATHS: /public/images/filename.jpg
+  // ✅ CORRECT URL PATHS (Vercel hides 'public' folder)
   const STARTER_CHARS = [
-    { name: "Ryuujin Kai", image: "/public/images/RyuujinKai.jpg" }, 
-    { name: "Akari Yume", image: "/public/images/AkariYume.jpg" }, 
-    { name: "Kurogane Raiden", image: "/public/images/KuroganeRaiden.jpg" }, 
-    { name: "Yasha Noctis", image: "/public/images/YashaNoctis.jpg" }, 
-    { name: "Lumina", image: "/public/images/Lumina.jpg" }, 
-    { name: "Haruto Hikari", image: "/public/images/HarutoHikari.jpg" }
+    { name: "Ryuujin Kai", image: "/images/RyuujinKai.jpg" }, 
+    { name: "Akari Yume", image: "/images/AkariYume.jpg" }, 
+    { name: "Kurogane Raiden", image: "/images/KuroganeRaiden.jpg" }, 
+    { name: "Yasha Noctis", image: "/images/YashaNoctis.jpg" }, 
+    { name: "Lumina", image: "/images/Lumina.jpg" }, 
+    { name: "Haruto Hikari", image: "/images/HarutoHikari.jpg" }
   ];
 
   try {
     const client = await clientPromise;
     const db = client.db("BattleBotV2");
     
-    // Check User
     let existingUser = await db.collection("users").findOne({ telegramId: user.id });
-
-    // 🛠️ SMART LOGIC: Fix Image Path
     let charUpdate = null;
     
     if (!existingUser) {
-        // CASE 1: NEW USER -> Random Character
+        // CASE 1: NEW USER
         const randomChar = STARTER_CHARS[Math.floor(Math.random() * STARTER_CHARS.length)];
         charUpdate = {
              name: randomChar.name,
@@ -39,19 +36,22 @@ export default async function handler(req, res) {
         };
     } 
     else {
-        // CASE 2: OLD USER -> Fix Broken/Old Paths
-        // Agar image path me "/public/" nahi hai, to use update karo
-        const currentImg = existingUser.character.image || "";
+        // CASE 2: OLD USER (Repair Path)
+        // Agar path me "/public" likha hai, to use hata do
+        let currentImg = existingUser.character.image || "";
         
-        if (!currentImg.includes("/public/images/")) {
-            const found = STARTER_CHARS.find(c => c.name === existingUser.character.name);
-            // Default Haruto agar match na mile
-            const correctImage = found ? found.image : "/public/images/HarutoHikari.jpg"; 
-            charUpdate = { image: correctImage };
+        // Fix: Replace '/public/images' with '/images'
+        if (currentImg.includes("/public/")) {
+            currentImg = currentImg.replace("/public", "");
+            charUpdate = { image: currentImg };
+        }
+        // Fix: Agar bilkul path nahi hai
+        else if (!currentImg.includes("/images/")) {
+             const found = STARTER_CHARS.find(c => c.name === existingUser.character.name);
+             charUpdate = { image: found ? found.image : "/images/HarutoHikari.jpg" };
         }
     }
 
-    // Prepare DB Update
     let updateQuery = {
         $setOnInsert: { coins: 100, createdAt: new Date() },
         $set: { username: user.username, fullname: user.first_name }
@@ -61,7 +61,7 @@ export default async function handler(req, res) {
         if (!existingUser) {
             updateQuery.$set.character = charUpdate;
         } else {
-            updateQuery.$set["character.image"] = charUpdate.image; // Fix path
+            updateQuery.$set["character.image"] = charUpdate.image; 
         }
     }
 
