@@ -10,15 +10,7 @@ let AUTH = null;
 let activeEnemy = null;
 let playerCurrentHp = 0;
 
-// 🔥 IMAGE MAPPING
-const CHAR_IMGS = {
-  "Ryuujin Kai": "RyuujinKai.jpg",
-  "Akari Yume": "AkariYume.jpg",
-  "Kurogane Raiden": "KuroganeRaiden.jpg",
-  "Yasha Noctis": "YashaNoctis.jpg",
-  "Lumina": "Lumina.jpg",
-  "Haruto Hikari": "HarutoHikari.jpg"
-};
+// 🗑️ MAPPING REMOVED! (Ab direct DB se aayega)
 
 // =========================================
 // 2. NAVIGATION
@@ -46,7 +38,8 @@ function show(name){
 // =========================================
 async function authUser(){
   if(isDebug) { 
-    AUTH = { user: { telegramId: 123, username: "debug", fullname: "Tester", coins: 999, character: { name: "Ryuujin Kai", level: 10, stats: { hp: 100, attack: 20, defense: 5, speed: 5 }, xp: 0, xpToNext: 100 } } }; 
+    // Debug data with image
+    AUTH = { user: { telegramId: 123, username: "debug", fullname: "Tester", coins: 999, character: { name: "Ryuujin Kai", image: "RyuujinKai.jpg", level: 10, stats: { hp: 100, attack: 20, defense: 5, speed: 5 }, xp: 0, xpToNext: 100 } } }; 
     return; 
   }
 
@@ -62,7 +55,7 @@ async function authUser(){
 }
 
 // =========================================
-// 4. PROFILE LOADER (Path Fix Here)
+// 4. PROFILE LOADER
 // =========================================
 async function loadProfile(silent){
   const tgUser = tg?.initDataUnsafe?.user || {};
@@ -75,25 +68,29 @@ async function loadProfile(silent){
   if(!AUTH) return; 
 
   try {
+    // Sync User (Latest Data layega)
     const res = await fetch("/api/syncUser", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ telegramId: AUTH.user.telegramId })
     });
-
     const data = await res.json();
     
     if(data.ok){
       const u = data.user;
       const c = u.character;
+      
+      // Update Global Auth locally (taaki battle me purani image na dikhe)
+      AUTH.user = u; 
 
       document.getElementById("coinsMini").innerText = u.coins;
       
-      const charImgName = CHAR_IMGS[c.name] || 'HarutoHikari.jpg';
-      
-      // 🟢 FIX: Path changed to /public/images/
+      // ✅ DIRECT DB IMAGE USE
+      // Fallback rakha hai taaki agar DB update hone me 1 sec lage to blank na dikhe
+      const imgPath = c.image ? `public/images/${c.image}` : `public/images/HarutoHikari.jpg`;
+
       document.getElementById("profileBox").innerHTML = `
         <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; display:flex; gap:15px; align-items:center;">
-          <img src="public/images/${charImgName}" 
+          <img src="${imgPath}" 
                style="width:70px; height:70px; border-radius:10px; object-fit:cover; border:2px solid #fff; background:#000;">
           <div style="flex:1;">
              <div style="font-weight:bold; font-size:16px;">
@@ -122,7 +119,7 @@ setInterval(() => {
 }, 3000);
 
 // =========================================
-// 5. GAMEPLAY FUNCTIONS
+// 5. GAMEPLAY (Uses DB Images)
 // =========================================
 
 document.getElementById("dailyBtn").onclick = async () => {
@@ -152,10 +149,7 @@ async function searchMonster() {
     activeEnemy = data.enemy;
     
     document.getElementById("prevName").innerText = activeEnemy.name;
-    
-    // 🟢 FIX: Monster Image Path also updated
     document.getElementById("prevImage").src = `public/images/${activeEnemy.image}`;
-    
     document.getElementById("prevHp").innerText = activeEnemy.hp;
     document.getElementById("prevAtk").innerText = activeEnemy.atk;
     document.getElementById("prevCoin").innerText = activeEnemy.coins;
@@ -168,14 +162,13 @@ function startCombat() {
   document.getElementById("arena-preview").style.display = "none";
   document.getElementById("arena-fight").style.display = "block";
   
-  const pName = AUTH.user.character.name;
-  const pImgName = CHAR_IMGS[pName] || 'HarutoHikari.jpg';
+  // ✅ DB Image Use
+  const pImg = AUTH.user.character.image || 'HarutoHikari.jpg';
   
-  // 🟢 FIX: Battle Screen Paths updated
-  document.getElementById("battlePlayerImg").src = `public/images/${pImgName}`;
+  document.getElementById("battlePlayerImg").src = `public/images/${pImg}`;
   document.getElementById("battleEnemyImg").src = `public/images/${activeEnemy.image}`;
   
-  document.getElementById("battlePlayerName").innerText = pName;
+  document.getElementById("battlePlayerName").innerText = AUTH.user.character.name;
   document.getElementById("battleEnemyName").innerText = activeEnemy.name;
 
   playerCurrentHp = AUTH.user.character.stats.hp;
