@@ -2,9 +2,7 @@ import clientPromise from '../lib/mongodb.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
-  
-  // NOTE: Production me Telegram Hash verification yahan zaroor lagana chahiye
-  // Abhi ke liye hum direct user data le rahe hain taaki aap test kar sako
+
   const { initData } = req.body;
   const searchParams = new URLSearchParams(initData);
   const user = JSON.parse(searchParams.get('user'));
@@ -13,6 +11,7 @@ export default async function handler(req, res) {
     const client = await clientPromise;
     const db = client.db("BattleBotV2");
     
+    // User Update/Insert
     const result = await db.collection("users").findOneAndUpdate(
       { telegramId: user.id },
       {
@@ -31,8 +30,14 @@ export default async function handler(req, res) {
       },
       { upsert: true, returnDocument: 'after' }
     );
-    res.status(200).json({ ok: true, user: result.value });
+
+    // 🔴 OLD CODE: user: result.value (Ye v6 me undefined return karta hai)
+    // 🟢 NEW CODE: user: result (Ye direct document return karega)
+    
+    res.status(200).json({ ok: true, user: result }); 
+
   } catch (e) {
+    console.error("Auth Error:", e);
     res.status(500).json({ error: e.message });
   }
 }
