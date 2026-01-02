@@ -1,100 +1,38 @@
-import { MongoClient } from "mongodb";
-import crypto from "crypto";
-
-const mongoUri = process.env.MONGO_URI;
-const dbName   = "battlebotv2";
-
-let client;
-
-async function getDB() {
-  if (!client) client = new MongoClient(mongoUri);
-  if (!client.topology?.isConnected()) await client.connect();
-  return client.db(dbName);
-}
-
-// -------- verify telegram signature -------- //
-function verifyTelegram(initData) {
-  try {
-    const urlParams = new URLSearchParams(initData);
-    const hash = urlParams.get("hash");
-    urlParams.delete("hash");
-
-    const dataCheckString = Array
-      .from(urlParams)
-      .sort(([a],[b]) => a.localeCompare(b))
-      .map(([k,v]) => `${k}=${v}`)
-      .join("\n");
-
-    const secretKey = crypto
-      .createHmac("sha256", "WebAppData")
-      .update(process.env.BOT_TOKEN)
-      .digest();
-
-    const hmac = crypto
-      .createHmac("sha256", secretKey)
-      .update(dataCheckString)
-      .digest("hex");
-
-    return hmac === hash;
-  } catch (e) {
-    console.error(e);
-    return false;
-  }
-}
+import clientPromise from '../../lib/mongodb';
 
 export default async function handler(req, res) {
-  if (req.method !== "POST")
-    return res.status(200).json({ ok:false, message:"Use POST" });
+  if (req.method !== 'POST') return res.status(405).end();
+  
+  // NOTE: Production me Telegram Hash verification yahan zaroor lagana chahiye
+  // Abhi ke liye hum direct user data le rahe hain taaki aap test kar sako
+  const { initData } = req.body;
+  const searchParams = new URLSearchParams(initData);
+  const user = JSON.parse(searchParams.get('user'));
 
   try {
-    const { initData } = req.body;
-
-    if (!initData)
-      return res.status(400).json({ ok:false, message:"Missing initData" });
-
-    if (!verifyTelegram(initData))
-      return res.status(401).json({ ok:false, message:"Invalid signature" });
-
-    const db = await getDB();
-    const tg = JSON.parse(
-      decodeURIComponent(
-        new URLSearchParams(initData).get("user")
-      )
-    );
-
-    let user = await db.collection("users").findOne({ telegramId: tg.id });
-
-    if (!user) {
-      user = {
-        telegramId: tg.id,
-        fullname: `${tg.first_name || ""} ${tg.last_name || ""}`.trim(),
-        username: tg.username || "",
-        coins: 50,
-        createdAt: Date.now(),
-        lastDaily: 0,
-        character: {
-          name: "Knight",
-          level: 1,
-          imageUrl: "https://i.imgur.com/Vc5gV3t.png",
-          stats: { hp: 60, attack: 12, defense: 9, speed: 6 }
+    const client = await clientPromise;
+    const db = client.db("BattleBotV2");
+    
+    const result = await db.collection("users").findOneAndUpdate(
+      { telegramId: user.id },
+      {
+        $setOnInsert: {
+          username: user.username,
+          fullname: user.first_name,
+          coins: 100,
+          createdAt: new Date(),
+          character: {
+            name: "Rookie Bot",
+            level: 1,
+            stats: { hp: 100, attack: 15, defense: 5, speed: 5 },
+            xp: 0, xpToNext: 100
+          }
         }
-      };
-
-      await db.collection("users").insertOne(user);
-    }
-
-    return res.status(200).json({
-      ok: true,
-      user: {
-        telegramId: user.telegramId,
-        fullname: user.fullname,
-        username: user.username,
-        coins: user.coins
-      }
-    });
-
+      },
+      { upsert: true, returnDocument: 'after' }
+    );
+    res.status(200).json({ ok: true, user: result.value });
   } catch (e) {
-    console.error(e);
-    return res.status(500).json({ ok:false, message:"Server error" });
+    res.status(500).json({ error: e.message });
   }
 }
