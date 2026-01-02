@@ -1,42 +1,39 @@
 // =========================================
-// 1. CONFIG & SETUP
+// 1. SETUP & CONFIG
 // =========================================
 const tg = window.Telegram?.WebApp;
 tg?.ready(); 
 tg?.expand();
 
-const isDebug = !tg.initData; 
 let AUTH = null;
 let activeEnemy = null;
 let playerCurrentHp = 0;
 
-// 🔥 HELPER: Force Path to '/public/images/Filename.jpg'
-function resolveImg(imgName) {
-  // Default fallback
-  if (!imgName) return "public/images/HarutoHikari.jpg"; 
-  
-  // If it's an external URL (http), leave it alone
-  if (imgName.startsWith("http")) return imgName; 
-  
-  let finalPath = imgName;
-
-  // 1. Remove starting slash to handle easily
-  if (finalPath.startsWith("/")) finalPath = finalPath.substring(1);
-
-  // 2. Check if 'public' is missing
-  if (!finalPath.startsWith("public/")) {
-      if (finalPath.startsWith("images/")) {
-          // "images/Name.jpg" -> "public/images/Name.jpg"
-          finalPath = "public/" + finalPath;
-      } else {
-          // "Name.jpg" -> "public/images/Name.jpg"
-          finalPath = "public/images/" + finalPath;
-      }
-  }
-
-  // 3. Return with leading slash (Absolute Path)
-  return "/" + finalPath;
+// 🔥 SMART IMAGE HELPER
+// Ye function ensure karega ki image ka naam hamesha sahi format me ho
+function getImgPath(imgName) {
+  if (!imgName) return "HarutoHikari.jpg"; 
+  // Agar full URL ya path hai, to usme se filename nikalo
+  const filename = imgName.split('/').pop(); 
+  return filename;
 }
+
+// 🛠️ AUTO-FIXER: Agar image load na ho, to dusra rasta try karo
+window.fixImg = function(imgEl) {
+  const filename = imgEl.getAttribute('data-filename');
+  if (!filename) return;
+
+  // Agar abhi '/public/images' try kar raha tha aur fail ho gaya
+  if (imgEl.src.includes("/public/images/")) {
+      console.log("⚠️ /public/ fail hua, ab /images/ try kar raha hu...");
+      imgEl.src = `/images/${filename}`;
+  } 
+  // Agar '/images/' bhi fail ho gaya (matlab file hi nahi hai)
+  else if (imgEl.src.includes("/images/")) {
+      imgEl.onerror = null; // Infinite loop roko
+      imgEl.src = "https://placehold.co/100x100?text=No+Img"; // Placeholder
+  }
+};
 
 // =========================================
 // 2. NAVIGATION
@@ -63,11 +60,6 @@ function show(name){
 // 3. AUTHENTICATION
 // =========================================
 async function authUser(){
-  if(isDebug) { 
-    AUTH = { user: { telegramId: 123, username: "debug", fullname: "Tester", coins: 999, character: { name: "Ryuujin Kai", image: "/public/images/RyuujinKai.jpg", level: 10, stats: { hp: 100, attack: 20, defense: 5, speed: 5 }, xp: 0, xpToNext: 100 } } }; 
-    return; 
-  }
-
   try {
     const res = await fetch("/api/auth", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -76,7 +68,7 @@ async function authUser(){
     const data = await res.json();
     if(data.ok) AUTH = data;
     else alert("Login Failed: " + data.message);
-  } catch(e) { alert("Conn Error: " + e.message); }
+  } catch(e) { alert("Connection Error: " + e.message); }
 }
 
 // =========================================
@@ -102,16 +94,17 @@ async function loadProfile(silent){
     if(data.ok){
       const u = data.user;
       const c = u.character;
-      AUTH.user = u; // Update local state
-
+      AUTH.user = u; 
       document.getElementById("coinsMini").innerText = u.coins;
       
-      // ✅ USE RESOLVER FOR IMAGE
-      const imgPath = resolveImg(c.image);
+      const filename = getImgPath(c.image);
 
+      // ✅ SMART IMAGE TAG (Try /public/images/ first)
       document.getElementById("profileBox").innerHTML = `
         <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; display:flex; gap:15px; align-items:center;">
-          <img src="${imgPath}" 
+          <img src="/public/images/${filename}" 
+               data-filename="${filename}"
+               onerror="window.fixImg(this)"
                style="width:70px; height:70px; border-radius:10px; object-fit:cover; border:2px solid #fff; background:#000;">
           <div style="flex:1;">
              <div style="font-weight:bold; font-size:16px;">
@@ -124,10 +117,7 @@ async function loadProfile(silent){
                 <span>🛡️ DEF: ${c.stats.defense}</span>
                 <span>⚡ SPD: ${c.stats.speed}</span>
              </div>
-             <div style="width:100%; height:4px; background:#444; margin-top:8px; border-radius:4px; position:relative;">
-                <div style="height:100%; width:${(c.xp/c.xpToNext)*100}%; background:#f1c40f; border-radius:4px;"></div>
-             </div>
-             <div style="font-size:10px; text-align:right; margin-top:2px; opacity:0.6">${c.xp} / ${c.xpToNext} XP</div>
+             <div style="width:100%; height:4px; background:#444; margin-top:8px; border-radius:4px;"><div style="height:100%; width:${(c.xp/c.xpToNext)*100}%; background:#f1c40f; border-radius:4px;"></div></div>
           </div>
         </div>
       `;
@@ -151,7 +141,7 @@ document.getElementById("dailyBtn").onclick = async () => {
         body: JSON.stringify({ telegramId: AUTH.user.telegramId })
       });
       const data = await res.json();
-      alert(data.ok ? `🎁 You got ${data.reward} coins!` : `⏳ ${data.message}`);
+      alert(data.ok ? `🎁 Reward: ${data.reward} coins!` : `⏳ ${data.message}`);
       if(data.ok) loadProfile(false); 
   } catch(e) { alert("Error: " + e.message); }
 };
@@ -171,8 +161,12 @@ async function searchMonster() {
     
     document.getElementById("prevName").innerText = activeEnemy.name;
     
-    // ✅ RESOLVE MONSTER IMAGE
-    document.getElementById("prevImage").src = resolveImg(activeEnemy.image);
+    // ✅ SMART IMAGE
+    const filename = getImgPath(activeEnemy.image);
+    const imgEl = document.getElementById("prevImage");
+    imgEl.src = `/public/images/${filename}`;
+    imgEl.setAttribute("data-filename", filename);
+    imgEl.onerror = function() { window.fixImg(this); };
     
     document.getElementById("prevHp").innerText = activeEnemy.hp;
     document.getElementById("prevAtk").innerText = activeEnemy.atk;
@@ -186,9 +180,19 @@ function startCombat() {
   document.getElementById("arena-preview").style.display = "none";
   document.getElementById("arena-fight").style.display = "block";
   
-  // ✅ RESOLVE BATTLE IMAGES
-  document.getElementById("battlePlayerImg").src = resolveImg(AUTH.user.character.image);
-  document.getElementById("battleEnemyImg").src = resolveImg(activeEnemy.image);
+  // ✅ SMART IMAGES FOR BATTLE
+  const pFile = getImgPath(AUTH.user.character.image);
+  const eFile = getImgPath(activeEnemy.image);
+
+  const pImg = document.getElementById("battlePlayerImg");
+  pImg.src = `/public/images/${pFile}`;
+  pImg.setAttribute("data-filename", pFile);
+  pImg.onerror = function() { window.fixImg(this); };
+
+  const eImg = document.getElementById("battleEnemyImg");
+  eImg.src = `/public/images/${eFile}`;
+  eImg.setAttribute("data-filename", eFile);
+  eImg.onerror = function() { window.fixImg(this); };
   
   document.getElementById("battlePlayerName").innerText = AUTH.user.character.name;
   document.getElementById("battleEnemyName").innerText = activeEnemy.name;
@@ -204,7 +208,6 @@ function startCombat() {
 async function attackTurn() {
   const btn = document.querySelector("#fightControls button.red");
   btn.disabled = true;
-
   const pImg = document.getElementById("battlePlayerImg");
   pImg.classList.add("lunge-right");
   setTimeout(() => pImg.classList.remove("lunge-right"), 300);
@@ -244,34 +247,10 @@ function spawnDamage(val, target, isCrit) {
     const overlay = document.getElementById("damageOverlay");
     const el = document.createElement("div");
     el.classList.add("damage-text");
-    if(target === 'enemy') {
-        el.classList.add(isCrit ? "dmg-crit" : "dmg-player");
-        el.style.left = "75%"; el.style.top = "40%";
-    } else {
-        el.classList.add("dmg-enemy");
-        el.style.left = "25%"; el.style.top = "40%";
-    }
-    el.innerText = val;
-    overlay.appendChild(el);
-    setTimeout(() => el.remove(), 800);
+    if(target === 'enemy') { el.classList.add(isCrit ? "dmg-crit" : "dmg-player"); el.style.left = "75%"; el.style.top = "40%"; } else { el.classList.add("dmg-enemy"); el.style.left = "25%"; el.style.top = "40%"; } el.innerText = val; overlay.appendChild(el); setTimeout(() => el.remove(), 800);
 }
-
-function updateBars(e, eM, p, pM) {
-    document.getElementById("battleEnemyBar").style.width = (e/eM*100) + "%";
-    document.getElementById("battlePlayerBar").style.width = (p/pM*100) + "%";
-}
-
-function endFight(win) {
-    document.getElementById("fightControls").style.display = "none";
-    document.getElementById("fightEndBtn").style.display = "block";
-    if(win) loadProfile(true);
-}
-
-function resetArenaUI() {
-    document.getElementById("arena-select").style.display = "block";
-    document.getElementById("arena-preview").style.display = "none";
-    document.getElementById("arena-fight").style.display = "none";
-}
-
+function updateBars(e, eM, p, pM) { document.getElementById("battleEnemyBar").style.width = (e/eM*100) + "%"; document.getElementById("battlePlayerBar").style.width = (p/pM*100) + "%"; }
+function endFight(win) { document.getElementById("fightControls").style.display = "none"; document.getElementById("fightEndBtn").style.display = "block"; if(win) loadProfile(true); }
+function resetArenaUI() { document.getElementById("arena-select").style.display = "block"; document.getElementById("arena-preview").style.display = "none"; document.getElementById("arena-fight").style.display = "none"; }
 function runAway() { if(confirm("Run away?")) resetArenaUI(); }
 show("profile");
