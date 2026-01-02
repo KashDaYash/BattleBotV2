@@ -6,34 +6,45 @@ tg?.ready(); tg?.expand();
 const isDebug = !tg.initData; 
 let AUTH = null; let activeEnemy = null; let playerCurrentHp = 0;
 
-// 🔥 HELPER: Ensure Path is /images/... (Not public/images)
+// 🔥 DEBUG RESOLVER (Alerts ke sath)
 function resolveImg(imgName) {
-  if (!imgName) return "/images/HarutoHikari.jpg"; 
+  if (!imgName) {
+      // alert("⚠️ Debug: Image name is missing/null. Using Default.");
+      return "/images/HarutoHikari.jpg"; 
+  }
   if (imgName.startsWith("http")) return imgName; 
   
-  // Clean up 'public' if present
   let cleanPath = imgName.replace("/public", "").replace("public", "");
   
-  // Ensure it starts with /images/
   if (!cleanPath.startsWith("/")) cleanPath = "/" + cleanPath;
   if (!cleanPath.startsWith("/images/")) cleanPath = "/images" + cleanPath;
   
-  // Double slash fix just in case (e.g. //images)
-  return cleanPath.replace("//", "/");
+  const finalPath = cleanPath.replace("//", "/");
+  
+  // 🔍 HAR IMAGE PATH PAR ALERT AAYEGA
+  // alert(`🖼️ Converting: '${imgName}' -> '${finalPath}'`);
+  
+  return finalPath;
 }
 
-// ... Navigation (Same) ...
+// =========================================
+// 2. NAVIGATION
+// =========================================
 const screens = { profile: document.getElementById("screen-profile"), arena: document.getElementById("screen-arena"), shop: document.getElementById("screen-shop"), leaderboard: document.getElementById("screen-leaderboard") };
 document.querySelectorAll("nav button").forEach(btn => btn.onclick = () => show(btn.dataset.go));
 function show(name){ Object.values(screens).forEach(s => s.classList.remove("active")); screens[name].classList.add("active"); if(name==="profile") loadProfile(false); if(name==="arena") resetArenaUI(); }
 
-// ... Auth (Same) ...
+// =========================================
+// 3. AUTHENTICATION
+// =========================================
 async function authUser(){
-  if(isDebug) { AUTH = { user: { telegramId: 123, username: "debug", fullname: "Tester", coins: 999, character: { name: "Ryuujin Kai", image: "/images/RyuujinKai.jpg", level: 10, stats: { hp: 100, attack: 20, defense: 5, speed: 5 }, xp: 0, xpToNext: 100 } } }; return; }
+  if(isDebug) { AUTH = { user: { telegramId: 123, username: "debug", fullname: "Tester", coins: 999, character: { name: "Ryuujin Kai", image: "RyuujinKai.jpg", level: 10, stats: { hp: 100, attack: 20, defense: 5, speed: 5 }, xp: 0, xpToNext: 100 } } }; return; }
   try { const res = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ initData: tg.initData }) }); const data = await res.json(); if(data.ok) AUTH = data; else alert("Login Failed: " + data.message); } catch(e) { alert("Conn Error: " + e.message); }
 }
 
-// ... Profile (Same Logic) ...
+// =========================================
+// 4. PROFILE LOADER (With Error Listener)
+// =========================================
 async function loadProfile(silent){
   const tgUser = tg?.initDataUnsafe?.user || {};
   if(tgUser.id && !silent) { document.getElementById("name").innerText = tgUser.first_name; document.getElementById("avatar").src = tgUser.photo_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${tgUser.id}`; }
@@ -46,11 +57,18 @@ async function loadProfile(silent){
       const u = data.user; const c = u.character; AUTH.user = u; 
       document.getElementById("coinsMini").innerText = u.coins;
       
-      const imgPath = resolveImg(c.image); // ✅ Using new resolver
+      const imgPath = resolveImg(c.image);
+
+      // 🔥 DB DATA ALERT
+      if(!silent) alert(`👤 Profile Data Loaded:\nName: ${c.name}\nDB Image: ${c.image}\nFinal Path: ${imgPath}`);
 
       document.getElementById("profileBox").innerHTML = `
         <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; display:flex; gap:15px; align-items:center;">
-          <img src="${imgPath}" style="width:70px; height:70px; border-radius:10px; object-fit:cover; border:2px solid #fff; background:#000;">
+          
+          <img src="${imgPath}" 
+               onerror="alert('❌ Failed to load image: ' + this.src)"
+               style="width:70px; height:70px; border-radius:10px; object-fit:cover; border:2px solid #fff; background:#000;">
+          
           <div style="flex:1;">
              <div style="font-weight:bold; font-size:16px;">${c.name} <span style="font-size:12px; background:#3498db; padding:2px 6px; border-radius:4px;">Lvl ${c.level}</span></div>
              <div style="font-size:12px; margin-top:6px; opacity:0.9;">❤️ ${c.stats.hp} ⚔️ ${c.stats.attack} 🛡️ ${c.stats.defense}</div>
@@ -58,11 +76,13 @@ async function loadProfile(silent){
           </div>
         </div>`;
     }
-  } catch(e) { if(!silent) console.error(e); }
+  } catch(e) { if(!silent) alert("Profile Error: " + e.message); }
 }
 setInterval(() => { if(document.getElementById("screen-profile").classList.contains("active")) loadProfile(true); }, 3000);
 
-// ... Gameplay (Same Logic) ...
+// =========================================
+// 5. GAMEPLAY (With Debugs)
+// =========================================
 document.getElementById("dailyBtn").onclick = async () => {
   if(!AUTH) await authUser(); try { const res = await fetch("/api/daily", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ telegramId: AUTH.user.telegramId }) }); const data = await res.json(); alert(data.ok ? `🎁 +${data.reward} coins!` : `⏳ ${data.message}`); if(data.ok) loadProfile(false); } catch(e) { alert("Error: " + e.message); }
 };
@@ -75,7 +95,14 @@ async function searchMonster() {
     document.getElementById("arena-select").style.display = "none"; document.getElementById("arena-preview").style.display = "block"; activeEnemy = data.enemy;
     
     document.getElementById("prevName").innerText = activeEnemy.name;
-    document.getElementById("prevImage").src = resolveImg(activeEnemy.image); // ✅
+    
+    const mImg = resolveImg(activeEnemy.image);
+    // alert(`👾 Monster Found: ${activeEnemy.name}\nImage: ${mImg}`);
+    
+    const imgEl = document.getElementById("prevImage");
+    imgEl.src = mImg;
+    imgEl.onerror = function() { alert("❌ Monster Image Failed: " + this.src); };
+
     document.getElementById("prevHp").innerText = activeEnemy.hp; document.getElementById("prevAtk").innerText = activeEnemy.atk; document.getElementById("prevCoin").innerText = activeEnemy.coins;
     if(btn) btn.innerText = "Find Monster"; 
   } catch(e) { alert(e.message); resetArenaUI(); }
@@ -83,13 +110,21 @@ async function searchMonster() {
 
 function startCombat() {
   document.getElementById("arena-preview").style.display = "none"; document.getElementById("arena-fight").style.display = "block";
-  document.getElementById("battlePlayerImg").src = resolveImg(AUTH.user.character.image); // ✅
-  document.getElementById("battleEnemyImg").src = resolveImg(activeEnemy.image); // ✅
+  
+  const pImg = document.getElementById("battlePlayerImg");
+  pImg.src = resolveImg(AUTH.user.character.image);
+  pImg.onerror = function() { alert("❌ Battle Player Img Failed"); };
+
+  const eImg = document.getElementById("battleEnemyImg");
+  eImg.src = resolveImg(activeEnemy.image);
+  eImg.onerror = function() { alert("❌ Battle Enemy Img Failed"); };
+
   document.getElementById("battlePlayerName").innerText = AUTH.user.character.name; document.getElementById("battleEnemyName").innerText = activeEnemy.name;
   playerCurrentHp = AUTH.user.character.stats.hp; updateBars(activeEnemy.hp, activeEnemy.maxHp, playerCurrentHp, AUTH.user.character.stats.hp);
   document.getElementById("fightControls").style.display = "flex"; document.getElementById("fightEndBtn").style.display = "none"; document.getElementById("battleLog").innerHTML = "Battle Started...";
 }
 
+// Attack logic same...
 async function attackTurn() {
   const btn = document.querySelector("#fightControls button.red"); btn.disabled = true;
   const pImg = document.getElementById("battlePlayerImg"); pImg.classList.add("lunge-right"); setTimeout(() => pImg.classList.remove("lunge-right"), 300);
