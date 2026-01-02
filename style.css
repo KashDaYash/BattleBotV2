@@ -114,3 +114,52 @@ body {
 }
 .nav button { background: transparent; border: none; font-size: 24px; cursor: pointer; opacity: 0.6; transition: 0.2s; }
 .nav button:hover, .screen.active ~ .nav button.active { opacity: 1; transform: scale(1.1); }
+
+/* -------------- DAMAGE BUBBLE ANIMATION -------------- */
+.damage-container {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; /* Click pass-through */
+  overflow: hidden;
+}
+
+.damage-text {
+  position: absolute;
+  font-size: 24px;
+  font-weight: 900;
+  text-shadow: 2px 2px 0 #000;
+  animation: floatUp 0.8s ease-out forwards;
+  z-index: 999;
+}
+
+.dmg-player { color: #f1c40f; font-size: 28px; } /* Gold color for our hits */
+.dmg-enemy { color: #e74c3c; font-size: 24px; }  /* Red color for enemy hits */
+.dmg-crit { 
+  color: #ff00de; font-size: 34px; 
+  text-shadow: 0 0 10px #ff00de;
+}
+
+@keyframes floatUp {
+  0% { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
+  20% { transform: translate(-50%, -20px) scale(1.2); opacity: 1; }
+  100% { transform: translate(-50%, -80px) scale(1); opacity: 0; }
+}
+
+/* Character & Monster Images */
+.battle-img {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 10px rgba(0,0,0,0.5));
+  transition: transform 0.2s;
+}
+
+/* Hit Effect (Shake) */
+.shake { animation: shake 0.3s; }
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  50% { transform: translateX(10px); }
+  75% { transform: translateX(-10px); }
+  100% { transform: translateX(0); }
+}
