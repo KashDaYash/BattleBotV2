@@ -1,78 +1,66 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>BattleBot V2</title>
-
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="style.css">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
-
 <body>
 
 <div class="app">
 
-  <!-- PROFILE -->
   <section id="screen-profile" class="screen active">
-
     <header class="glass header">
       <div style="display:flex;gap:10px;align-items:center">
-        <img id="avatar" class="avatar">
-
+        <img id="avatar" class="avatar" src="">
         <div>
           <h2 id="name">Player</h2>
-          <p id="username" style="opacity:.8">@username</p>
-
-          <div style="margin-top:6px">
-            💰 <b id="coinsMini">0</b>
-          </div>
-
-          <small id="uid">ID —</small>
+          <p id="username" style="opacity:.8">@loading</p>
+          <div style="margin-top:6px">💰 <b id="coinsMini">0</b></div>
         </div>
       </div>
     </header>
 
-    <div class="glass" style="margin:12px;padding:12px">
-      <h3>Profile</h3>
-
-      <div id="profileBox">
-        Loading…
-      </div>
-
-      <button id="dailyBtn"
-        style="margin-top:12px;width:100%;padding:10px;border:none;border-radius:14px;background:#2ecc71;color:white">
+    <div class="glass content-box">
+      <h3>📊 Character Stats</h3>
+      <div id="profileBox">Loading data...</div>
+      
+      <button id="dailyBtn" class="action-btn green">
         🎁 Claim Daily Reward
       </button>
     </div>
-
   </section>
 
-  <!-- ARENA -->
   <section id="screen-arena" class="screen">
-    <div class="glass" style="margin:12px;padding:12px">
-      <h3>Arena</h3>
-      <div id="arenaBox">Coming next…</div>
+    <div class="glass content-box" style="text-align:center">
+      <h3 id="monsterName">Searching...</h3>
+      
+      <div class="monster-stage">🦖</div> 
+      
+      <div class="hp-bar-container">
+        <div id="monsterHpBar" class="hp-bar" style="width:100%"></div>
+      </div>
+      <p id="monsterHpText" style="font-size:12px; opacity:0.8">HP: ???</p>
+    </div>
+
+    <div id="battleLog" class="glass battle-log">
+      Waiting for battle to start...
+    </div>
+
+    <div class="battle-controls">
+      <button id="attackBtn" class="action-btn red">⚔️ ATTACK</button>
     </div>
   </section>
 
-  <!-- SHOP -->
   <section id="screen-shop" class="screen">
-    <div class="glass" style="margin:12px;padding:12px">
-      <h3>Shop</h3>
-      <div id="shopBox">Coming soon…</div>
-    </div>
+    <div class="glass content-box"><h3>🛒 Shop</h3><p>Coming Soon...</p></div>
   </section>
-
-  <!-- LEADERBOARD -->
   <section id="screen-leaderboard" class="screen">
-    <div class="glass" style="margin:12px;padding:12px">
-      <h3>Leaderboard</h3>
-      <div id="leaderBox">Coming soon…</div>
-    </div>
+    <div class="glass content-box"><h3>🏆 Leaderboard</h3><p>Coming Soon...</p></div>
   </section>
 
-  <!-- NAV -->
   <nav class="glass nav">
     <button data-go="arena">🥊</button>
     <button data-go="shop">🛒</button>
@@ -82,6 +70,6 @@
 
 </div>
 
-<script src="/script.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
