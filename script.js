@@ -6,14 +6,14 @@ let AUTH = null;
 let activeEnemy = null;
 let playerCurrentHp = 0;
 
-// CHARACTER MAPPING (Filename must match public/images)
+// 🔥 CHARACTER MAPPING (Updated according to your Screenshot)
 const CHAR_IMGS = {
-  "Ryuujin Kai": "1000512125.jpg",
-  "Akari Yume": "1000512124.jpg",
-  "Kurogane Raiden": "1000512123.jpg",
-  "Yasha Noctis": "1000512126.jpg",
-  "Rookie Bot": "1000512127.jpg", // Default Haruto Hikari
-  "Lumina": "1000512122.jpg"
+  "Ryuujin Kai": "RyuujinKai.jpg",
+  "Akari Yume": "AkariYume.jpg",
+  "Kurogane Raiden": "KuroganeRaiden.jpg",
+  "Yasha Noctis": "YashaNoctis.jpg",
+  "Rookie Bot": "HarutoHikari.jpg", // Default Character
+  "Lumina": "Lumina.jpg"
 };
 
 // NAV
@@ -55,9 +55,13 @@ async function loadProfile(silent){
       const u = data.user;
       const c = u.character;
       document.getElementById("coinsMini").innerText = u.coins;
+      
+      // Select correct image
+      const charImgName = CHAR_IMGS[c.name] || 'HarutoHikari.jpg';
+      
       document.getElementById("profileBox").innerHTML = `
         <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; display:flex; gap:15px; align-items:center;">
-          <img src="/images/${CHAR_IMGS[c.name] || '1000512127.jpg'}" style="width:60px; height:60px; border-radius:10px; object-fit:cover; border:2px solid #fff;">
+          <img src="/images/${charImgName}" style="width:60px; height:60px; border-radius:10px; object-fit:cover; border:2px solid #fff;">
           <div style="flex:1;">
              <div style="font-weight:bold; font-size:16px;">${c.name} <span style="font-size:12px; background:#3498db; padding:2px 6px; border-radius:4px;">Lvl ${c.level}</span></div>
              <div style="font-size:12px; margin-top:4px;">❤️ ${c.stats.hp} ⚔️ ${c.stats.attack} 🛡️ ${c.stats.defense}</div>
@@ -100,7 +104,9 @@ function startCombat() {
   
   // Set Images
   const pName = AUTH.user.character.name;
-  document.getElementById("battlePlayerImg").src = `/images/${CHAR_IMGS[pName] || '1000512127.jpg'}`;
+  const pImgName = CHAR_IMGS[pName] || 'HarutoHikari.jpg';
+  
+  document.getElementById("battlePlayerImg").src = `/images/${pImgName}`;
   document.getElementById("battleEnemyImg").src = `/images/${activeEnemy.image}`;
   document.getElementById("battlePlayerName").innerText = pName;
   document.getElementById("battleEnemyName").innerText = activeEnemy.name;
@@ -113,7 +119,7 @@ function startCombat() {
   document.getElementById("battleLog").innerHTML = "Battle Started...";
 }
 
-// ATTACK TURN (WITH BUBBLES)
+// ATTACK TURN
 async function attackTurn() {
   const btn = document.querySelector("#fightControls button.red");
   btn.disabled = true;
@@ -144,7 +150,7 @@ async function attackTurn() {
                 spawnDamage(val, 'player', false);
                 pImg.classList.add("shake");
                 setTimeout(() => pImg.classList.remove("shake"), 300);
-            }, 500); // Enemy hits slightly later
+            }, 500); 
         }
     });
 
@@ -155,7 +161,7 @@ async function attackTurn() {
   btn.disabled = false;
 }
 
-// DAMAGE BUBBLE SPAWNER
+// DAMAGE BUBBLE
 function spawnDamage(val, target, isCrit) {
     const overlay = document.getElementById("damageOverlay");
     const el = document.createElement("div");
