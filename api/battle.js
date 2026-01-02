@@ -15,11 +15,11 @@ export default async function handler(req, res) {
     const monsters = [
       // --- NEW SMALL MONSTERS (Level 1-3) ---
       // Note: Jab inki photo aa jaye to image ka naam change kar dena
-      { name: "Snirk", hp: 30, maxHp: 30, atk: 8, xp: 15, coins: 10, image: "placeholder_snirk.jpg" }, // Goblin
-      { name: "Glop", hp: 40, maxHp: 40, atk: 5, xp: 20, coins: 15, image: "placeholder_glop.jpg" }, // Slime
-      { name: "Gronk", hp: 50, maxHp: 50, atk: 12, xp: 25, coins: 20, image: "placeholder_gronk.jpg" }, // Orc
-      { name: "Skitter", hp: 35, maxHp: 35, atk: 10, xp: 18, coins: 12, image: "placeholder_skitter.jpg" }, // Rat
-      { name: "Rattle", hp: 45, maxHp: 45, atk: 11, xp: 22, coins: 18, image: "placeholder_rattle.jpg" }, // Skeleton
+      { name: "Snirk", hp: 30, maxHp: 30, atk: 8, xp: 15, coins: 10, image: "Snirk.png" }, // Goblin
+      { name: "Glop", hp: 40, maxHp: 40, atk: 5, xp: 20, coins: 15, image: "Glop.png" }, // Slime
+      { name: "Gronk", hp: 50, maxHp: 50, atk: 12, xp: 25, coins: 20, image: "Gronk.png" }, // Orc
+      { name: "Skitter", hp: 35, maxHp: 35, atk: 10, xp: 18, coins: 12, image: "Skitter.png" }, // Rat
+      { name: "Rattle", hp: 45, maxHp: 45, atk: 11, xp: 22, coins: 18, image: "Rattle.png" }, // Skeleton
 
       // --- EXISTING BIG MONSTERS (Level 5+) ---
       { name: "Grudor", hp: 120, maxHp: 120, atk: 15, xp: 50, coins: 40, image: "1000389883.jpg" },
