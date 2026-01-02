@@ -7,65 +7,70 @@ export default async function handler(req, res) {
   const searchParams = new URLSearchParams(initData);
   const user = JSON.parse(searchParams.get('user'));
 
-  // 🔥 Character List (Name + Image File)
+  // 🔥 FULL PATHS (Vercel public folder rule: /images/filename.jpg)
   const STARTER_CHARS = [
-    { name: "Ryuujin Kai", image: "RyuujinKai.jpg" }, 
-    { name: "Akari Yume", image: "AkariYume.jpg" }, 
-    { name: "Kurogane Raiden", image: "KuroganeRaiden.jpg" }, 
-    { name: "Yasha Noctis", image: "YashaNoctis.jpg" }, 
-    { name: "Lumina", image: "Lumina.jpg" }, 
-    { name: "Haruto Hikari", image: "HarutoHikari.jpg" }
+    { name: "Ryuujin Kai", image: "/images/RyuujinKai.jpg" }, 
+    { name: "Akari Yume", image: "/images/AkariYume.jpg" }, 
+    { name: "Kurogane Raiden", image: "/images/KuroganeRaiden.jpg" }, 
+    { name: "Yasha Noctis", image: "/images/YashaNoctis.jpg" }, 
+    { name: "Lumina", image: "/images/Lumina.jpg" }, 
+    { name: "Haruto Hikari", image: "/images/HarutoHikari.jpg" }
   ];
 
   try {
     const client = await clientPromise;
     const db = client.db("BattleBotV2");
     
-    // Check old user
+    // Existing User Check
     let existingUser = await db.collection("users").findOne({ telegramId: user.id });
 
-    // 🛠️ LOGIC: New User or Missing Image Repair
-    let charData;
+    // 🛠️ SMART LOGIC: Decide Image
+    let charUpdate = null;
     
     if (!existingUser) {
-        // CASE 1: New User -> Pick Random
-        charData = STARTER_CHARS[Math.floor(Math.random() * STARTER_CHARS.length)];
-    } else if (!existingUser.character.image) {
-        // CASE 2: Old User (Fix Missing Image) -> Find matching image for their name
-        // Agar naam list me nahi mila to default Haruto de do
-        const found = STARTER_CHARS.find(c => c.name === existingUser.character.name);
-        charData = found || { name: existingUser.character.name, image: "HarutoHikari.jpg" };
-    }
-
-    // Prepare Update Object
-    let updateFields = {
-      username: user.username,
-      fullname: user.first_name,
-    };
-
-    // Sirf tab update karo jab zaroorat ho (New User ya Repair)
-    if (charData) {
-       // Note: Hum stats reset nahi kar rahe, sirf photo/name fix kar rahe hain
-       if(!existingUser) {
-           // New User Full Setup
-           updateFields.character = {
-             name: charData.name,
-             image: charData.image, // ✅ Saved to DB
+        // CASE 1: NEW USER -> Random Character
+        const randomChar = STARTER_CHARS[Math.floor(Math.random() * STARTER_CHARS.length)];
+        charUpdate = {
+             name: randomChar.name,
+             image: randomChar.image, // ✅ Saves "/images/Name.jpg"
              level: 1,
              stats: { hp: 100, attack: 15, defense: 5, speed: 5 },
              xp: 0, xpToNext: 100
-           };
-           updateFields.coins = 100;
-           updateFields.createdAt = new Date();
-       } else {
-           // Old User Patch (Sirf Image add karo)
-           updateFields["character.image"] = charData.image;
-       }
+        };
+    } 
+    else {
+        // CASE 2: OLD USER -> FIX BROKEN PATHS
+        // Agar image missing hai YA image path me "/images/" nahi hai
+        const currentImg = existingUser.character.image || "";
+        
+        if (!currentImg.startsWith("/images/")) {
+            // Sahi photo dhoondo
+            const found = STARTER_CHARS.find(c => c.name === existingUser.character.name);
+            const correctImage = found ? found.image : "/images/HarutoHikari.jpg"; // Fallback
+            
+            // Sirf image update karo
+            charUpdate = { image: correctImage };
+        }
+    }
+
+    // Database Operation
+    let updateQuery = {
+        $setOnInsert: { coins: 100, createdAt: new Date() },
+        $set: { username: user.username, fullname: user.first_name }
+    };
+
+    // Agar character me kuch change karna hai to add karo
+    if (charUpdate) {
+        if (!existingUser) {
+            updateQuery.$set.character = charUpdate; // New User: Full Char
+        } else {
+            updateQuery.$set["character.image"] = charUpdate.image; // Old User: Fix Image Only
+        }
     }
 
     const result = await db.collection("users").findOneAndUpdate(
       { telegramId: user.id },
-      { $set: updateFields },
+      updateQuery,
       { upsert: true, returnDocument: 'after' }
     );
     
