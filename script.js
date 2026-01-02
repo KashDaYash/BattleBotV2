@@ -1,24 +1,38 @@
+// =========================================
+// 1. SETUP & CONFIG
+// =========================================
 const tg = window.Telegram?.WebApp;
-tg?.ready(); tg?.expand();
+tg?.ready(); 
+tg?.expand();
 
 const isDebug = !tg.initData; 
 let AUTH = null;
 let activeEnemy = null;
 let playerCurrentHp = 0;
 
-// 🔥 CHARACTER MAPPING (Updated according to your Screenshot)
+// 🔥 IMAGE MAPPING (No more Rookie Bot)
 const CHAR_IMGS = {
   "Ryuujin Kai": "RyuujinKai.jpg",
   "Akari Yume": "AkariYume.jpg",
   "Kurogane Raiden": "KuroganeRaiden.jpg",
   "Yasha Noctis": "YashaNoctis.jpg",
-  "Rookie Bot": "HarutoHikari.jpg", // Default Character
-  "Lumina": "Lumina.jpg"
+  "Lumina": "Lumina.jpg",
+  "Haruto Hikari": "HarutoHikari.jpg"
 };
 
-// NAV
-const screens = { profile: document.getElementById("screen-profile"), arena: document.getElementById("screen-arena"), shop: document.getElementById("screen-shop"), leaderboard: document.getElementById("screen-leaderboard") };
-document.querySelectorAll("nav button").forEach(btn => btn.onclick = () => show(btn.dataset.go));
+// =========================================
+// 2. NAVIGATION
+// =========================================
+const screens = {
+  profile: document.getElementById("screen-profile"),
+  arena: document.getElementById("screen-arena"),
+  shop: document.getElementById("screen-shop"),
+  leaderboard: document.getElementById("screen-leaderboard"),
+};
+
+document.querySelectorAll("nav button").forEach(btn => {
+  btn.onclick = () => show(btn.dataset.go);
+});
 
 function show(name){
   Object.values(screens).forEach(s => s.classList.remove("active"));
@@ -27,57 +41,108 @@ function show(name){
   if(name === "arena") resetArenaUI();
 }
 
-// AUTH
+// =========================================
+// 3. AUTHENTICATION
+// =========================================
 async function authUser(){
-  if(isDebug) { AUTH = { user: { telegramId: 123, username: "debug", fullname: "Tester", coins: 999, character: { name: "Rookie Bot", level: 10, stats: { hp: 100, attack: 20, defense: 5, speed: 5 }, xp: 0, xpToNext: 100 } } }; return; }
+  // Testing Mode me bhi Random dikhana chahiye
+  if(isDebug) { 
+    AUTH = { user: { telegramId: 123, username: "debug", fullname: "Tester", coins: 999, character: { name: "Ryuujin Kai", level: 10, stats: { hp: 100, attack: 20, defense: 5, speed: 5 }, xp: 0, xpToNext: 100 } } }; 
+    return; 
+  }
+
   try {
-    const res = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ initData: tg.initData }) });
+    const res = await fetch("/api/auth", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: tg.initData })
+    });
     const data = await res.json();
     if(data.ok) AUTH = data;
-    else alert("Login Failed");
-  } catch(e) { alert("Conn Error"); }
+    else alert("Login Failed: " + data.message);
+  } catch(e) { alert("Conn Error: " + e.message); }
 }
 
-// PROFILE
+// =========================================
+// 4. PROFILE LOADER
+// =========================================
 async function loadProfile(silent){
   const tgUser = tg?.initDataUnsafe?.user || {};
   if(tgUser.id && !silent) {
      document.getElementById("name").innerText = tgUser.first_name;
      document.getElementById("avatar").src = tgUser.photo_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${tgUser.id}`;
   }
+
   if(!AUTH) await authUser();
   if(!AUTH) return; 
 
   try {
-    const res = await fetch("/api/syncUser", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ telegramId: AUTH.user.telegramId }) });
+    const res = await fetch("/api/syncUser", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegramId: AUTH.user.telegramId })
+    });
+
     const data = await res.json();
+    
     if(data.ok){
       const u = data.user;
       const c = u.character;
+
       document.getElementById("coinsMini").innerText = u.coins;
       
-      // Select correct image
+      // Image Selection
       const charImgName = CHAR_IMGS[c.name] || 'HarutoHikari.jpg';
       
       document.getElementById("profileBox").innerHTML = `
         <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; display:flex; gap:15px; align-items:center;">
-          <img src="/images/${charImgName}" style="width:60px; height:60px; border-radius:10px; object-fit:cover; border:2px solid #fff;">
+          <img src="/images/${charImgName}" 
+               style="width:70px; height:70px; border-radius:10px; object-fit:cover; border:2px solid #fff; background:#000;">
           <div style="flex:1;">
-             <div style="font-weight:bold; font-size:16px;">${c.name} <span style="font-size:12px; background:#3498db; padding:2px 6px; border-radius:4px;">Lvl ${c.level}</span></div>
-             <div style="font-size:12px; margin-top:4px;">❤️ ${c.stats.hp} ⚔️ ${c.stats.attack} 🛡️ ${c.stats.defense}</div>
-             <div style="width:100%; height:4px; background:#444; margin-top:6px; border-radius:4px;"><div style="height:100%; width:${(c.xp/c.xpToNext)*100}%; background:#f1c40f;"></div></div>
+             <div style="font-weight:bold; font-size:16px;">
+                ${c.name} 
+                <span style="font-size:12px; background:#3498db; padding:2px 6px; border-radius:4px; margin-left:5px;">Lvl ${c.level}</span>
+             </div>
+             <div style="font-size:12px; margin-top:6px; opacity:0.9; display:grid; grid-template-columns:1fr 1fr; gap:5px;">
+                <span>❤️ HP: ${c.stats.hp}</span>
+                <span>⚔️ ATK: ${c.stats.attack}</span>
+                <span>🛡️ DEF: ${c.stats.defense}</span>
+                <span>⚡ SPD: ${c.stats.speed}</span>
+             </div>
+             <div style="width:100%; height:4px; background:#444; margin-top:8px; border-radius:4px; position:relative;">
+                <div style="height:100%; width:${(c.xp/c.xpToNext)*100}%; background:#f1c40f; border-radius:4px;"></div>
+             </div>
+             <div style="font-size:10px; text-align:right; margin-top:2px; opacity:0.6">${c.xp} / ${c.xpToNext} XP</div>
           </div>
         </div>
       `;
     }
-  } catch(e) {}
+  } catch(e) { if(!silent) console.error(e); }
 }
-setInterval(() => { if(document.getElementById("screen-profile").classList.contains("active")) loadProfile(true); }, 3000);
 
-// SEARCH MONSTER
+setInterval(() => {
+  if(document.getElementById("screen-profile").classList.contains("active")) loadProfile(true); 
+}, 3000);
+
+// =========================================
+// 5. GAMEPLAY FUNCTIONS
+// =========================================
+
+document.getElementById("dailyBtn").onclick = async () => {
+  if(!AUTH) await authUser();
+  try {
+      const res = await fetch("/api/daily", {
+        method:"POST", headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ telegramId: AUTH.user.telegramId })
+      });
+      const data = await res.json();
+      alert(data.ok ? `🎁 You got ${data.reward} coins!` : `⏳ ${data.message}`);
+      if(data.ok) loadProfile(false); 
+  } catch(e) { alert("Error: " + e.message); }
+};
+
 async function searchMonster() {
   if(!AUTH) await authUser();
-  const btn = event?.target; if(btn) btn.innerText = "Searching...";
+  const btn = event?.target; 
+  if(btn) btn.innerText = "Searching...";
 
   try {
     const res = await fetch("/api/battle", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ telegramId: AUTH.user.telegramId, action: 'search' }) });
@@ -97,12 +162,10 @@ async function searchMonster() {
   } catch(e) { alert(e.message); resetArenaUI(); }
 }
 
-// COMBAT START
 function startCombat() {
   document.getElementById("arena-preview").style.display = "none";
   document.getElementById("arena-fight").style.display = "block";
   
-  // Set Images
   const pName = AUTH.user.character.name;
   const pImgName = CHAR_IMGS[pName] || 'HarutoHikari.jpg';
   
@@ -119,12 +182,10 @@ function startCombat() {
   document.getElementById("battleLog").innerHTML = "Battle Started...";
 }
 
-// ATTACK TURN
 async function attackTurn() {
   const btn = document.querySelector("#fightControls button.red");
   btn.disabled = true;
 
-  // Animation: Player Lunge
   const pImg = document.getElementById("battlePlayerImg");
   pImg.classList.add("lunge-right");
   setTimeout(() => pImg.classList.remove("lunge-right"), 300);
@@ -139,7 +200,6 @@ async function attackTurn() {
 
     data.log.forEach(l => {
         const val = l.msg.replace(" dmg", "");
-        
         if(l.type === 'player') {
             spawnDamage(val, 'enemy', l.isCrit);
             const eImg = document.getElementById("battleEnemyImg");
@@ -161,7 +221,6 @@ async function attackTurn() {
   btn.disabled = false;
 }
 
-// DAMAGE BUBBLE
 function spawnDamage(val, target, isCrit) {
     const overlay = document.getElementById("damageOverlay");
     const el = document.createElement("div");
