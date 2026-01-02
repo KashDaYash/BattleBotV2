@@ -2,9 +2,12 @@ const tg = window.Telegram?.WebApp;
 tg?.ready();
 tg?.expand();
 
+// Testing Mode: Agar Telegram me nahi khula hai to true ho jayega
+const isDebug = !tg.initData; 
+
 let AUTH = null;
 
-// --- Navigation ---
+// ---------------- NAVIGATION ---------------- //
 const screens = {
   profile: document.getElementById("screen-profile"),
   arena: document.getElementById("screen-arena"),
@@ -19,59 +22,118 @@ document.querySelectorAll("nav button").forEach(btn => {
 function show(name){
   Object.values(screens).forEach(s => s.classList.remove("active"));
   screens[name].classList.add("active");
+  
   if(name === "profile") loadProfile();
   if(name === "arena") resetArenaUI();
 }
 
-// --- Auth ---
+// ---------------- AUTHENTICATION ---------------- //
 async function authUser(){
-  if (!tg?.initData) return;
+  // 1. Agar Browser me hai, to fake Auth create karo (Testing ke liye)
+  if (isDebug) {
+    console.warn("⚠️ Running in Browser Mode (Mock Data)");
+    AUTH = {
+      user: {
+        telegramId: 123456,
+        username: "test_user",
+        fullname: "Test Warrior",
+        coins: 500,
+        character: { 
+          name: "Debug Bot", level: 5, xp: 50, xpToNext: 100,
+          stats: { hp: 100, attack: 20, defense: 10, speed: 5 }
+        }
+      }
+    };
+    return;
+  }
+
+  // 2. Real Telegram Auth
   try {
     const res = await fetch("/api/auth", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ initData: tg.initData })
     });
-    const data = await res.json();
-    if(data.ok) AUTH = data;
-  } catch(e) { console.error("Auth Error", e); }
-}
-
-// --- Profile ---
-async function loadProfile(){
-  if(!AUTH) await authUser();
-  if(!AUTH) return;
-
-  const res = await fetch("/api/syncUser", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ telegramId: AUTH.user.telegramId })
-  });
-  const data = await res.json();
-  
-  if(data.ok){
-    const u = data.user;
-    const c = u.character;
     
-    document.getElementById("name").innerText = u.fullname;
-    document.getElementById("username").innerText = "@" + u.username;
-    document.getElementById("coinsMini").innerText = u.coins;
-    document.getElementById("avatar").src = tg.initDataUnsafe?.user?.photo_url || 
-      `https://api.dicebear.com/7.x/bottts/svg?seed=${u.telegramId}`;
-
-    document.getElementById("profileBox").innerHTML = `
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-        <div>⚡ Lvl ${c.level}</div>
-        <div>❤️ HP ${c.stats.hp}</div>
-        <div>⚔️ Atk ${c.stats.attack}</div>
-        <div>🛡️ Def ${c.stats.defense}</div>
-      </div>
-      <div style="margin-top:10px; font-size:12px; opacity:0.7">XP: ${c.xp} / ${c.xpToNext}</div>
-    `;
+    const data = await res.json();
+    if(data.ok) {
+      AUTH = data;
+    } else {
+      console.error("Auth Failed:", data);
+      document.getElementById("profileBox").innerText = "Login Failed. Try reopening.";
+    }
+  } catch(e) {
+    console.error("Connection Error", e);
+    document.getElementById("profileBox").innerText = "Connection Error.";
   }
 }
 
-// --- Daily Reward ---
+// ---------------- PROFILE LOADER (FIXED) ---------------- //
+async function loadProfile(){
+  // Step A: Pehle turant Telegram ka local data dikhao (Wait mat karo)
+  const tgUser = tg?.initDataUnsafe?.user || {};
+  
+  // Set Basic Info from Telegram immediately
+  if(tgUser.id) {
+    document.getElementById("name").innerText = `${tgUser.first_name} ${tgUser.last_name || ''}`.trim();
+    document.getElementById("username").innerText = tgUser.username ? `@${tgUser.username}` : "No Username";
+    // Photo Logic (Telegram photo nahi hai to DiceBear use karo)
+    document.getElementById("avatar").src = tgUser.photo_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${tgUser.id}`;
+  }
+
+  // Step B: Ab Server se latest data lo
+  if(!AUTH) await authUser();
+  if(!AUTH) return; // Agar abhi bhi auth nahi hua to ruk jao
+
+  // Server sync call
+  try {
+    const res = await fetch("/api/syncUser", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegramId: AUTH.user.telegramId })
+    });
+    const data = await res.json();
+    
+    if(data.ok){
+      const u = data.user;
+      const c = u.character;
+      
+      // Update UI with Server Data (Ye final data hai)
+      document.getElementById("name").innerText = u.fullname;
+      document.getElementById("username").innerText = u.username ? `@${u.username}` : "@warrior";
+      document.getElementById("coinsMini").innerText = u.coins;
+      
+      // Avatar Fallback again (just in case)
+      if(!document.getElementById("avatar").src) {
+         document.getElementById("avatar").src = `https://api.dicebear.com/7.x/bottts/svg?seed=${u.telegramId}`;
+      }
+
+      // Character Stats Box
+      document.getElementById("profileBox").innerHTML = `
+        <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:10px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:14px;">
+            <div>🤖 <b>${c.name}</b></div>
+            <div>⚡ Lvl: ${c.level}</div>
+            <div>❤️ HP: ${c.stats.hp}</div>
+            <div>⚔️ Atk: ${c.stats.attack}</div>
+          </div>
+          <div style="margin-top:8px; font-size:12px; opacity:0.7; border-top:1px solid rgba(255,255,255,0.1); padding-top:5px;">
+             ✨ XP: ${c.xp} / ${c.xpToNext}
+          </div>
+        </div>
+        <div style="margin-top:10px; font-size:12px; text-align:center; opacity:0.5">
+          User ID: ${u.telegramId}
+        </div>
+      `;
+    }
+  } catch (e) {
+    console.error("Sync Error:", e);
+  }
+}
+
+// ---------------- DAILY REWARD ---------------- //
 document.getElementById("dailyBtn").onclick = async () => {
   if(!AUTH) await authUser();
+  if(!AUTH) return alert("Please wait, logging in...");
+
   const res = await fetch("/api/daily", {
     method:"POST", headers:{ "Content-Type":"application/json" },
     body: JSON.stringify({ telegramId: AUTH.user.telegramId })
@@ -81,7 +143,7 @@ document.getElementById("dailyBtn").onclick = async () => {
   if(data.ok) loadProfile();
 };
 
-// --- Arena Logic ---
+// ---------------- ARENA UI ---------------- //
 function resetArenaUI() {
   document.getElementById("monsterHpBar").style.width = "100%";
   document.getElementById("monsterHpText").innerText = "HP: 100%";
@@ -104,25 +166,22 @@ document.getElementById("attackBtn").onclick = async () => {
 
   if(!data.ok) { logBox.innerHTML = "Error!"; return; }
 
-  // Update UI based on result
   document.getElementById("monsterName").innerText = data.monsterName;
-  
-  // Clear log and animate lines
   logBox.innerHTML = "";
+  
   data.log.forEach((line, i) => {
     setTimeout(() => {
       logBox.innerHTML += `<p>${line}</p>`;
       logBox.scrollTop = logBox.scrollHeight;
-    }, i * 300); // 300ms delay per line for effect
+    }, i * 300);
   });
 
-  // Final Outcome
   setTimeout(() => {
     if(data.win) {
       document.getElementById("monsterHpBar").style.width = "0%";
       document.getElementById("monsterHpText").innerText = "HP: 0";
       logBox.innerHTML += `<p style="color:#2ecc71; margin-top:5px"><b>🏆 VICTORY! +${data.reward.coins} Coins</b></p>`;
-      loadProfile(); // Background refresh
+      loadProfile(); 
     } else {
       logBox.innerHTML += `<p style="color:#e74c3c; margin-top:5px"><b>💀 DEFEAT...</b></p>`;
     }
@@ -130,5 +189,5 @@ document.getElementById("attackBtn").onclick = async () => {
   }, data.log.length * 300);
 };
 
-// Init
+// Start
 show("profile");
