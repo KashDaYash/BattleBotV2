@@ -4,76 +4,52 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>BattleBot V2</title>
-  
   <link rel="stylesheet" href="style.css">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
-
 <body>
 
 <div class="app">
 
   <section id="screen-profile" class="screen active">
-    
     <header class="glass header">
       <img id="avatar" class="avatar" src="" alt="User">
       <div class="user-info">
         <h2 id="name">Loading...</h2>
         <p id="username">@...</p>
-        <div class="coins-badge">
-          💰 <b id="coinsMini">0</b> Coins
-        </div>
+        <div class="coins-badge">💰 <b id="coinsMini">0</b> Coins</div>
       </div>
     </header>
 
     <div class="glass content-box">
       <h3>📊 Character Stats</h3>
-      <div id="profileBox">
-        Loading data...
-      </div>
-      
-      <button id="dailyBtn" class="action-btn green">
-        🎁 Claim Daily Reward
-      </button>
+      <div id="profileBox">Loading data...</div>
+      <button id="dailyBtn" class="action-btn green">🎁 Claim Daily Reward</button>
     </div>
-
   </section>
 
 
   <section id="screen-arena" class="screen">
     
     <div id="arena-select" class="glass content-box" style="text-align:center; padding:40px 20px;">
-      <h2 style="font-size:28px; margin-bottom:5px;">⚔️ Battle Arena</h2>
+      <h2>⚔️ Battle Arena</h2>
       <p style="opacity:0.7; margin-bottom:30px">Choose your opponent</p>
-      
-      <button onclick="searchMonster()" class="action-btn" style="background: linear-gradient(45deg, #e67e22, #d35400); margin-bottom:15px; box-shadow: 0 4px #a04000;">
-        🦖 Find Monster (PvM)
-      </button>
-      
-      <button onclick="alert('PvP Mode is currently locked!')" class="action-btn" style="background: #555; opacity:0.7; box-shadow: none;">
-        🤺 Fight Player (Locked)
-      </button>
+      <button onclick="searchMonster()" class="action-btn" style="background: linear-gradient(45deg, #e67e22, #d35400);">🦖 Find Monster (PvM)</button>
+      <button onclick="alert('PvP Locked')" class="action-btn" style="background:#555; opacity:0.7">🤺 PvP (Locked)</button>
     </div>
 
     <div id="arena-preview" style="display:none;" class="glass content-box">
-      <h3 style="text-align:center; margin-bottom:20px">🔍 Monster Found!</h3>
+      <h3 style="text-align:center;">🔍 Found Opponent!</h3>
       
-      <div style="text-align:center; margin-bottom:20px;">
-        <div id="prevEmoji" style="font-size:70px; animation: bounce 2s infinite">❓</div>
+      <div style="text-align:center; margin:20px 0;">
+        <img id="prevImage" class="battle-img" src="" style="border-radius:10px; border:2px solid #fff;">
         <h2 id="prevName" style="color:#f1c40f; margin-top:10px">Unknown</h2>
         
-        <div style="display:flex; justify-content:center; gap:10px; margin-top:15px;">
-           <span style="background:rgba(231, 76, 60, 0.2); border:1px solid #e74c3c; padding:5px 10px; border-radius:8px; font-size:14px">
-             ❤️ HP: <b id="prevHp">0</b>
-           </span>
-           <span style="background:rgba(230, 126, 34, 0.2); border:1px solid #e67e22; padding:5px 10px; border-radius:8px; font-size:14px">
-             ⚔️ ATK: <b id="prevAtk">0</b>
-           </span>
+        <div style="display:flex; justify-content:center; gap:10px; margin-top:10px;">
+           <span style="border:1px solid #e74c3c; padding:4px 8px; border-radius:6px; color:#e74c3c">❤️ <b id="prevHp">0</b></span>
+           <span style="border:1px solid #e67e22; padding:4px 8px; border-radius:6px; color:#e67e22">⚔️ <b id="prevAtk">0</b></span>
         </div>
-        
-        <p style="margin-top:15px; font-size:13px; opacity:0.8">
-          Reward: 💰 <b id="prevCoin">0</b> | ✨ <b id="prevXp">0</b> XP
-        </p>
+        <p style="margin-top:10px; font-size:12px; color:#f1c40f">Reward: 💰 <span id="prevCoin">0</span></p>
       </div>
 
       <div style="display:flex; gap:10px;">
@@ -82,66 +58,41 @@
       </div>
     </div>
 
-    <div id="arena-fight" style="display:none;">
+    <div id="arena-fight" style="display:none; position:relative; height:100%;">
       
-      <div class="glass content-box" style="text-align:center; padding-bottom:10px;">
-        <h3 id="battleEnemyName">Enemy</h3>
-        <div id="battleEnemyEmoji" style="font-size:50px; margin:5px 0;">👾</div>
-        
-        <div class="hp-bar-container">
-          <div id="battleEnemyBar" class="hp-bar" style="width:100%"></div>
+      <div id="damageOverlay" class="damage-container"></div>
+
+      <div class="battle-scene">
+        <div style="text-align:center; position:relative;">
+           <div class="hp-bar-container" style="width:100px;"><div id="battlePlayerBar" class="hp-bar" style="background:#3498db; width:100%"></div></div>
+           <img id="battlePlayerImg" class="battle-img" src="" style="transform: scaleX(-1);"> </div>
+
+        <div style="text-align:center; position:relative;">
+           <div class="hp-bar-container" style="width:100px;"><div id="battleEnemyBar" class="hp-bar" style="background:#e74c3c; width:100%"></div></div>
+           <img id="battleEnemyImg" class="battle-img" src="">
         </div>
-        <p id="battleEnemyHpText" style="font-size:12px; opacity:0.8">100%</p>
       </div>
 
       <div class="glass" style="margin:10px 15px; padding:15px;">
-        
-        <div style="display:flex; justify-content:space-between; margin-bottom:5px; font-size:13px;">
-          <span>Your HP</span> <span id="battlePlayerHpText">100</span>
-        </div>
-        <div class="hp-bar-container" style="height:8px; margin-bottom:15px;">
-             <div id="battlePlayerBar" class="hp-bar" style="width:100%; background: linear-gradient(90deg, #3498db, #2980b9);"></div>
+        <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:10px;">
+           <span id="battlePlayerName">You</span> 
+           <span style="color:#e74c3c" id="battleEnemyName">Enemy</span>
         </div>
 
-        <div id="battleLog" class="battle-log" style="height:120px; background:rgba(0,0,0,0.3); border-radius:10px; padding:10px; margin-bottom:15px;">
-          Battle Started...
-        </div>
+        <div id="battleLog" style="height:80px; overflow-y:auto; font-size:12px; margin-bottom:10px; opacity:0.8;">Battle Started...</div>
 
         <div id="fightControls" style="display:flex; gap:10px;">
           <button onclick="runAway()" class="action-btn" style="background:#95a5a6; flex:1">🏃 Run</button>
           <button onclick="attackTurn()" class="action-btn red" style="flex:2">⚔️ ATTACK</button>
         </div>
-        
-        <button id="fightEndBtn" onclick="resetArenaUI()" class="action-btn green" style="display:none;">
-          ✅ Continue
-        </button>
-
+        <button id="fightEndBtn" onclick="resetArenaUI()" class="action-btn green" style="display:none;">✅ Continue</button>
       </div>
     </div>
 
   </section>
 
-
-  <section id="screen-shop" class="screen">
-    <div class="glass content-box">
-        <h3>🛒 Marketplace</h3>
-        <p style="opacity:0.7">Buy weapons and potions here.</p>
-        <div style="margin-top:20px; padding:20px; background:rgba(0,0,0,0.2); border-radius:10px; text-align:center;">
-            🚧 Coming Soon
-        </div>
-    </div>
-  </section>
-
-
-  <section id="screen-leaderboard" class="screen">
-    <div class="glass content-box">
-        <h3>🏆 Top Players</h3>
-        <div style="margin-top:20px; padding:20px; background:rgba(0,0,0,0.2); border-radius:10px; text-align:center;">
-            🚧 Coming Soon
-        </div>
-    </div>
-  </section>
-
+  <section id="screen-shop" class="screen"><div class="glass content-box"><h3>🛒 Shop</h3><p>Coming Soon...</p></div></section>
+  <section id="screen-leaderboard" class="screen"><div class="glass content-box"><h3>🏆 Leaderboard</h3><p>Coming Soon...</p></div></section>
 
   <nav class="glass nav">
     <button data-go="arena">🥊</button>
@@ -151,8 +102,6 @@
   </nav>
 
 </div>
-
 <script src="script.js"></script>
-
 </body>
 </html>
