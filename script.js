@@ -12,11 +12,11 @@ let playerCurrentHp = 0;
 
 // 🔥 HELPER: Fix Image Path Automatically
 function resolveImg(imgName) {
-  if (!imgName) return "/images/HarutoHikari.jpg"; // Default
+  if (!imgName) return "/public/images/HarutoHikari.jpg"; // Default
   if (imgName.startsWith("http")) return imgName; // If URL
-  if (imgName.startsWith("/images/")) return imgName; // If already correct
+  if (imgName.startsWith("/public/images/")) return imgName; // If already correct
   // Agar sirf filename hai (ex: "Snirk.png"), to prefix lagao
-  return `/images/${imgName}`;
+  return `/public/images/${imgName}`;
 }
 
 // =========================================
