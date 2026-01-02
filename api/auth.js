@@ -7,14 +7,14 @@ export default async function handler(req, res) {
   const searchParams = new URLSearchParams(initData);
   const user = JSON.parse(searchParams.get('user'));
 
-  // ✅ FORCE 'public' IN PATH
+  // ✅ Sirf Filename save karo (No folders)
   const STARTER_CHARS = [
-    { name: "Ryuujin Kai", image: "/public/images/RyuujinKai.jpg" }, 
-    { name: "Akari Yume", image: "/public/images/AkariYume.jpg" }, 
-    { name: "Kurogane Raiden", image: "/public/images/KuroganeRaiden.jpg" }, 
-    { name: "Yasha Noctis", image: "https://envs.sh/HqT.jpg" }, 
-    { name: "Lumina", image: "/public/images/Lumina.jpg" }, 
-    { name: "Haruto Hikari", image: "/public/images/HarutoHikari.jpg" }
+    { name: "Ryuujin Kai", image: "RyuujinKai.jpg" }, 
+    { name: "Akari Yume", image: "AkariYume.jpg" }, 
+    { name: "Kurogane Raiden", image: "KuroganeRaiden.jpg" }, 
+    { name: "Yasha Noctis", image: "YashaNoctis.jpg" }, 
+    { name: "Lumina", image: "Lumina.jpg" }, 
+    { name: "Haruto Hikari", image: "HarutoHikari.jpg" }
   ];
 
   try {
@@ -29,35 +29,20 @@ export default async function handler(req, res) {
         const randomChar = STARTER_CHARS[Math.floor(Math.random() * STARTER_CHARS.length)];
         charUpdate = {
              name: randomChar.name,
-             image: randomChar.image, 
+             image: randomChar.image, // Saves just "Name.jpg"
              level: 1,
              stats: { hp: 100, attack: 15, defense: 5, speed: 5 },
              xp: 0, xpToNext: 100
         };
     } 
     else {
-        // CASE 2: Old User (Fix Missing 'public' in path)
+        // CASE 2: Fix Old Paths (Remove folders from DB)
         let currentImg = existingUser.character.image || "";
         
-        // Agar path me 'public' nahi hai, to usse fix karo
-        if (!currentImg.includes("/public/")) {
-             // Agar sirf filename hai ya '/images/' hai, to sahi path dhoondo ya banao
-             const found = STARTER_CHARS.find(c => c.name === existingUser.character.name);
-             
-             if (found) {
-                 charUpdate = { image: found.image };
-             } else {
-                 // Manual Fix: Agar DB me "/images/Name.jpg" hai to "/public" jodo
-                 if (currentImg.startsWith("/images/")) {
-                     charUpdate = { image: "/public" + currentImg };
-                 } else if (!currentImg.includes("/")) {
-                     // Agar sirf "Name.jpg" hai
-                     charUpdate = { image: "/public/images/" + currentImg };
-                 } else {
-                     // Fallback
-                     charUpdate = { image: "/public/images/HarutoHikari.jpg" };
-                 }
-             }
+        // Agar DB me /public/ ya /images/ hai, to hata do
+        if (currentImg.includes("/")) {
+            const filename = currentImg.split("/").pop(); // Get last part
+            charUpdate = { image: filename };
         }
     }
 
