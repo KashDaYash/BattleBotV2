@@ -7,14 +7,14 @@ export default async function handler(req, res) {
   const searchParams = new URLSearchParams(initData);
   const user = JSON.parse(searchParams.get('user'));
 
-  // ✅ CORRECT URL PATHS (Vercel hides 'public' folder)
+  // ✅ FORCE 'public' IN PATH
   const STARTER_CHARS = [
-    { name: "Ryuujin Kai", image: "/images/RyuujinKai.jpg" }, 
-    { name: "Akari Yume", image: "/images/AkariYume.jpg" }, 
-    { name: "Kurogane Raiden", image: "/images/KuroganeRaiden.jpg" }, 
-    { name: "Yasha Noctis", image: "/images/YashaNoctis.jpg" }, 
-    { name: "Lumina", image: "/images/Lumina.jpg" }, 
-    { name: "Haruto Hikari", image: "/images/HarutoHikari.jpg" }
+    { name: "Ryuujin Kai", image: "/public/images/RyuujinKai.jpg" }, 
+    { name: "Akari Yume", image: "/public/images/AkariYume.jpg" }, 
+    { name: "Kurogane Raiden", image: "/public/images/KuroganeRaiden.jpg" }, 
+    { name: "Yasha Noctis", image: "/public/images/YashaNoctis.jpg" }, 
+    { name: "Lumina", image: "/public/images/Lumina.jpg" }, 
+    { name: "Haruto Hikari", image: "/public/images/HarutoHikari.jpg" }
   ];
 
   try {
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     let charUpdate = null;
     
     if (!existingUser) {
-        // CASE 1: NEW USER
+        // CASE 1: New User
         const randomChar = STARTER_CHARS[Math.floor(Math.random() * STARTER_CHARS.length)];
         charUpdate = {
              name: randomChar.name,
@@ -36,19 +36,28 @@ export default async function handler(req, res) {
         };
     } 
     else {
-        // CASE 2: OLD USER (Repair Path)
-        // Agar path me "/public" likha hai, to use hata do
+        // CASE 2: Old User (Fix Missing 'public' in path)
         let currentImg = existingUser.character.image || "";
         
-        // Fix: Replace '/public/images' with '/images'
-        if (currentImg.includes("/public/")) {
-            currentImg = currentImg.replace("/public", "");
-            charUpdate = { image: currentImg };
-        }
-        // Fix: Agar bilkul path nahi hai
-        else if (!currentImg.includes("/images/")) {
+        // Agar path me 'public' nahi hai, to usse fix karo
+        if (!currentImg.includes("/public/")) {
+             // Agar sirf filename hai ya '/images/' hai, to sahi path dhoondo ya banao
              const found = STARTER_CHARS.find(c => c.name === existingUser.character.name);
-             charUpdate = { image: found ? found.image : "/images/HarutoHikari.jpg" };
+             
+             if (found) {
+                 charUpdate = { image: found.image };
+             } else {
+                 // Manual Fix: Agar DB me "/images/Name.jpg" hai to "/public" jodo
+                 if (currentImg.startsWith("/images/")) {
+                     charUpdate = { image: "/public" + currentImg };
+                 } else if (!currentImg.includes("/")) {
+                     // Agar sirf "Name.jpg" hai
+                     charUpdate = { image: "/public/images/" + currentImg };
+                 } else {
+                     // Fallback
+                     charUpdate = { image: "/public/images/HarutoHikari.jpg" };
+                 }
+             }
         }
     }
 
