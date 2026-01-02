@@ -1,3 +1,4 @@
+/* -------------- GLOBAL STYLES -------------- */
 * { box-sizing: border-box; }
 
 body {
@@ -9,11 +10,12 @@ body {
   color: #fff;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   user-select: none;
+  overflow: hidden; /* Prevent scroll during animations */
 }
 
-.app { width: 100%; max-width: 470px; padding-bottom: 80px; position: relative; }
+.app { width: 100%; max-width: 470px; height: 100vh; position: relative; overflow-y: auto; padding-bottom: 80px; }
 
-/* Glass Effect */
+/* -------------- GLASS UI -------------- */
 .glass {
   backdrop-filter: blur(18px);
   background: rgba(255, 255, 255, 0.08);
@@ -22,144 +24,108 @@ body {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
-/* -------------- Header & Profile Styling -------------- */
-.header {
-  margin: 15px;
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  gap: 20px; /* Photo aur text ke beech space */
-}
+.header { margin: 15px; padding: 20px; display: flex; align-items: center; gap: 20px; }
+.content-box { margin: 15px; padding: 20px; }
 
 .avatar {
-  width: 75px;       /* Size badhaya */
-  height: 75px;
-  border-radius: 50%; /* Photo ko Gol (Circle) kiya */
-  object-fit: cover;
-  border: 3px solid #2ecc71; /* Green border for active look */
-  box-shadow: 0 5px 15px rgba(0,0,0,0.4); /* Thoda utha hua effect */
-}
-
-.user-info {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.user-info h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: 0.5px;
-}
-
-.user-info p {
-  margin: 4px 0;
-  font-size: 14px;
-  color: #aaa;
+  width: 75px; height: 75px;
+  border-radius: 50%; object-fit: cover;
+  border: 3px solid #2ecc71;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.4);
 }
 
 .coins-badge {
-  background: rgba(255, 215, 0, 0.15);
-  color: #ffd700;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 13px;
-  width: fit-content;
-  margin-top: 5px;
+  background: rgba(255, 215, 0, 0.15); color: #ffd700;
+  padding: 4px 10px; border-radius: 20px; font-size: 13px;
+  width: fit-content; margin-top: 5px;
   border: 1px solid rgba(255, 215, 0, 0.3);
 }
- 
-.content-box { margin: 15px; padding: 20px; }
 
-/* Buttons */
-.action-btn {
-  width: 100%; padding: 14px; margin-top: 10px;
-  border: none; border-radius: 14px;
-  color: white; font-weight: bold; font-size: 16px; cursor: pointer;
-}
-.green { background: #2ecc71; box-shadow: 0 4px #27ae60; }
-.red { background: #e74c3c; box-shadow: 0 4px #c0392b; }
-.action-btn:active { transform: translateY(4px); box-shadow: none; }
-
-/* Screens */
-.screen { display: none; animation: fadeIn 0.3s ease; }
-.screen.active { display: block; }
-@keyframes fadeIn { from {opacity:0; transform:translateY(10px);} to {opacity:1; transform:translateY(0);} }
-
-/* Arena Specifics */
-.monster-stage { font-size: 60px; margin: 10px 0; animation: bounce 2s infinite; }
-@keyframes bounce { 0%, 100% {transform:translateY(0);} 50% {transform:translateY(-10px);} }
-
-.hp-bar-container {
-  width: 100%; background: #333; height: 14px; border-radius: 10px; overflow: hidden; margin: 10px 0;
-  border: 1px solid rgba(255,255,255,0.2);
-}
-.hp-bar { height: 100%; background: linear-gradient(90deg, #e74c3c, #c0392b); transition: width 0.5s ease; }
-
-.battle-log {
-  margin: 15px; padding: 10px; height: 120px; overflow-y: auto;
-  font-size: 13px; text-align: left; background: rgba(0,0,0,0.2);
-}
-.battle-log p { margin: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-
-.battle-controls { padding: 0 15px; display: flex; gap: 10px; }
-
-/* Navigation */
-.nav {
-  position: fixed; bottom: 15px; left: 50%; transform: translateX(-50%);
-  width: 90%; max-width: 440px; display: flex; justify-content: space-around;
-  padding: 10px; z-index: 100; background: rgba(20, 20, 30, 0.85);
-}
-.nav button { background: transparent; border: none; font-size: 24px; cursor: pointer; opacity: 0.6; transition: 0.2s; }
-.nav button:hover, .screen.active ~ .nav button.active { opacity: 1; transform: scale(1.1); }
-
-/* -------------- DAMAGE BUBBLE ANIMATION -------------- */
-.damage-container {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
-  pointer-events: none; /* Click pass-through */
-  overflow: hidden;
+/* -------------- BATTLE IMAGES & ANIMATION -------------- */
+.battle-scene {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  height: 250px; /* Arena Height */
+  padding: 20px;
+  margin-bottom: 10px;
 }
 
-.damage-text {
-  position: absolute;
-  font-size: 24px;
-  font-weight: 900;
-  text-shadow: 2px 2px 0 #000;
-  animation: floatUp 0.8s ease-out forwards;
-  z-index: 999;
-}
-
-.dmg-player { color: #f1c40f; font-size: 28px; } /* Gold color for our hits */
-.dmg-enemy { color: #e74c3c; font-size: 24px; }  /* Red color for enemy hits */
-.dmg-crit { 
-  color: #ff00de; font-size: 34px; 
-  text-shadow: 0 0 10px #ff00de;
-}
-
-@keyframes floatUp {
-  0% { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
-  20% { transform: translate(-50%, -20px) scale(1.2); opacity: 1; }
-  100% { transform: translate(-50%, -80px) scale(1); opacity: 0; }
-}
-
-/* Character & Monster Images */
 .battle-img {
-  width: 120px;
-  height: 120px;
+  width: 140px; height: 140px;
   object-fit: contain;
   filter: drop-shadow(0 10px 10px rgba(0,0,0,0.5));
   transition: transform 0.2s;
 }
 
-/* Hit Effect (Shake) */
-.shake { animation: shake 0.3s; }
+/* Shake Effect for Hit */
+.shake { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
 @keyframes shake {
-  0% { transform: translateX(0); }
-  25% { transform: translateX(-10px); }
-  50% { transform: translateX(10px); }
-  75% { transform: translateX(-10px); }
-  100% { transform: translateX(0); }
+  10%, 90% { transform: translate3d(-2px, 0, 0); }
+  20%, 80% { transform: translate3d(4px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+  40%, 60% { transform: translate3d(6px, 0, 0); }
 }
+
+/* Attack Lunge Animation */
+.lunge-right { animation: lungeR 0.3s forwards; }
+@keyframes lungeR { 50% { transform: translateX(30px) scale(1.1); } }
+
+.lunge-left { animation: lungeL 0.3s forwards; }
+@keyframes lungeL { 50% { transform: translateX(-30px) scale(1.1); } }
+
+/* -------------- DAMAGE BUBBLES (FREE FIRE STYLE) -------------- */
+.damage-container {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; overflow: hidden; z-index: 1000;
+}
+
+.damage-text {
+  position: absolute;
+  font-family: 'Impact', sans-serif;
+  font-weight: 900;
+  -webkit-text-stroke: 1px black;
+  animation: floatUp 0.8s ease-out forwards;
+}
+
+.dmg-player { color: #f1c40f; font-size: 32px; } /* Gold for our hits */
+.dmg-enemy { color: #e74c3c; font-size: 28px; }  /* Red for enemy hits */
+.dmg-crit { color: #ff00de; font-size: 40px; text-shadow: 0 0 15px #ff00de; }
+
+@keyframes floatUp {
+  0% { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
+  20% { transform: translate(-50%, -40px) scale(1.2); opacity: 1; }
+  100% { transform: translate(-50%, -100px) scale(1); opacity: 0; }
+}
+
+/* -------------- BARS & BUTTONS -------------- */
+.hp-bar-container {
+  width: 100%; background: rgba(0,0,0,0.6); height: 10px;
+  border-radius: 10px; overflow: hidden; margin: 5px 0;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.hp-bar { height: 100%; transition: width 0.3s ease; }
+
+.action-btn {
+  width: 100%; padding: 14px; border: none; border-radius: 14px;
+  color: white; font-weight: bold; font-size: 16px; cursor: pointer;
+  margin-bottom: 10px;
+}
+.red { background: linear-gradient(45deg, #c0392b, #e74c3c); box-shadow: 0 4px #922b21; }
+.green { background: linear-gradient(45deg, #27ae60, #2ecc71); box-shadow: 0 4px #1e8449; }
+.action-btn:active { transform: translateY(4px); box-shadow: none; }
+
+/* Screen Management */
+.screen { display: none; animation: fadeIn 0.3s ease; }
+.screen.active { display: block; }
+@keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
+
+/* Nav */
+.nav {
+  position: fixed; bottom: 15px; left: 50%; transform: translateX(-50%);
+  width: 90%; max-width: 440px; display: flex; justify-content: space-around;
+  padding: 10px; z-index: 100; background: rgba(20, 20, 30, 0.9);
+}
+.nav button { background: transparent; border: none; font-size: 24px; opacity: 0.6; }
+.nav button:hover, .screen.active ~ .nav button.active { opacity: 1; transform: scale(1.1); }
