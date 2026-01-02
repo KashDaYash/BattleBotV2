@@ -11,6 +11,19 @@ export default async function handler(req, res) {
     const client = await clientPromise;
     const db = client.db("BattleBotV2");
     
+    // 🔥 NEW: Available Characters List
+    const starterCharacters = [
+      "Ryuujin Kai", 
+      "Akari Yume", 
+      "Kurogane Raiden", 
+      "Yasha Noctis", 
+      "Haruto Hikari", 
+      "Lumina"
+    ];
+
+    // Pick Random Character
+    const randomCharName = starterCharacters[Math.floor(Math.random() * starterCharacters.length)];
+
     // User Update/Insert
     const result = await db.collection("users").findOneAndUpdate(
       { telegramId: user.id },
@@ -21,8 +34,9 @@ export default async function handler(req, res) {
           coins: 100,
           createdAt: new Date(),
           character: {
-            name: "Rookie Bot",
+            name: randomCharName, // ✅ Ab Random milega
             level: 1,
+            // Stats sabke same rakhe hain taaki game fair rahe (Level 1 par)
             stats: { hp: 100, attack: 15, defense: 5, speed: 5 },
             xp: 0, xpToNext: 100
           }
@@ -30,9 +44,6 @@ export default async function handler(req, res) {
       },
       { upsert: true, returnDocument: 'after' }
     );
-
-    // 🔴 OLD CODE: user: result.value (Ye v6 me undefined return karta hai)
-    // 🟢 NEW CODE: user: result (Ye direct document return karega)
     
     res.status(200).json({ ok: true, user: result }); 
 
