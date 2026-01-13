@@ -129,3 +129,18 @@ body {
 }
 .nav button { background: transparent; border: none; font-size: 24px; opacity: 0.6; }
 .nav button:hover, .screen.active ~ .nav button.active { opacity: 1; transform: scale(1.1); }
+
+/* Add these at the bottom for Dodge effects */
+.dmg-dodge {
+  color: #3498db; /* Blue text */
+  font-size: 24px;
+  font-style: italic;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+}
+
+.dmg-miss {
+  color: #95a5a6;
+  font-size: 20px;
+}
+
