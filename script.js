@@ -9,29 +9,19 @@ let AUTH = null;
 let activeEnemy = null;
 let playerCurrentHp = 0;
 
-// 🔥 SMART IMAGE HELPER
-// Ye function ensure karega ki image ka naam hamesha sahi format me ho
 function getImgPath(imgName) {
   if (!imgName) return "HarutoHikari.jpg"; 
-  // Agar full URL ya path hai, to usme se filename nikalo
-  const filename = imgName.split('/').pop(); 
-  return filename;
+  return imgName.split('/').pop(); 
 }
 
-// 🛠️ AUTO-FIXER: Agar image load na ho, to dusra rasta try karo
 window.fixImg = function(imgEl) {
   const filename = imgEl.getAttribute('data-filename');
   if (!filename) return;
-
-  // Agar abhi '/public/images' try kar raha tha aur fail ho gaya
   if (imgEl.src.includes("/public/images/")) {
-      console.log("⚠️ /public/ fail hua, ab /images/ try kar raha hu...");
       imgEl.src = `/images/${filename}`;
-  } 
-  // Agar '/images/' bhi fail ho gaya (matlab file hi nahi hai)
-  else if (imgEl.src.includes("/images/")) {
-      imgEl.onerror = null; // Infinite loop roko
-      imgEl.src = "https://placehold.co/100x100?text=No+Img"; // Placeholder
+  } else if (imgEl.src.includes("/images/")) {
+      imgEl.onerror = null; 
+      imgEl.src = "https://placehold.co/100x100?text=No+Img"; 
   }
 };
 
@@ -57,7 +47,7 @@ function show(name){
 }
 
 // =========================================
-// 3. AUTHENTICATION
+// 3. AUTHENTICATION & PROFILE
 // =========================================
 async function authUser(){
   try {
@@ -71,9 +61,6 @@ async function authUser(){
   } catch(e) { alert("Connection Error: " + e.message); }
 }
 
-// =========================================
-// 4. PROFILE LOADER
-// =========================================
 async function loadProfile(silent){
   const tgUser = tg?.initDataUnsafe?.user || {};
   if(tgUser.id && !silent) {
@@ -90,16 +77,17 @@ async function loadProfile(silent){
       body: JSON.stringify({ telegramId: AUTH.user.telegramId })
     });
     const data = await res.json();
-    
+
     if(data.ok){
       const u = data.user;
       const c = u.character;
       AUTH.user = u; 
       document.getElementById("coinsMini").innerText = u.coins;
-      
-      const filename = getImgPath(c.image);
 
-      // ✅ SMART IMAGE TAG (Try /public/images/ first)
+      const filename = getImgPath(c.image);
+      // 🔥 XP BAR FIX: Added Math.min to prevent overflow
+      const xpPercent = Math.min((c.xp / c.xpToNext) * 100, 100);
+
       document.getElementById("profileBox").innerHTML = `
         <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; display:flex; gap:15px; align-items:center;">
           <img src="/public/images/${filename}" 
@@ -117,7 +105,9 @@ async function loadProfile(silent){
                 <span>🛡️ DEF: ${c.stats.defense}</span>
                 <span>⚡ SPD: ${c.stats.speed}</span>
              </div>
-             <div style="width:100%; height:4px; background:#444; margin-top:8px; border-radius:4px;"><div style="height:100%; width:${(c.xp/c.xpToNext)*100}%; background:#f1c40f; border-radius:4px;"></div></div>
+             <div style="width:100%; height:4px; background:#444; margin-top:8px; border-radius:4px;">
+                <div style="height:100%; width:${xpPercent}%; background:#f1c40f; border-radius:4px;"></div>
+             </div>
           </div>
         </div>
       `;
@@ -130,9 +120,8 @@ setInterval(() => {
 }, 3000);
 
 // =========================================
-// 5. GAMEPLAY & BATTLE
+// 4. BATTLE LOGIC (UPDATED)
 // =========================================
-
 document.getElementById("dailyBtn").onclick = async () => {
   if(!AUTH) await authUser();
   try {
@@ -151,27 +140,29 @@ async function searchMonster() {
   const btn = event?.target; 
   if(btn) btn.innerText = "Searching...";
 
+  // 🔥 FLICKER FIX: Clear old data immediately
+  document.getElementById("prevImage").src = ""; 
+  document.getElementById("prevName").innerText = "Loading...";
+
   try {
     const res = await fetch("/api/battle", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ telegramId: AUTH.user.telegramId, action: 'search' }) });
     const data = await res.json();
-    
+
     document.getElementById("arena-select").style.display = "none";
     document.getElementById("arena-preview").style.display = "block";
     activeEnemy = data.enemy;
-    
+
     document.getElementById("prevName").innerText = activeEnemy.name;
-    
-    // ✅ SMART IMAGE
     const filename = getImgPath(activeEnemy.image);
     const imgEl = document.getElementById("prevImage");
     imgEl.src = `/public/images/${filename}`;
     imgEl.setAttribute("data-filename", filename);
     imgEl.onerror = function() { window.fixImg(this); };
-    
+
     document.getElementById("prevHp").innerText = activeEnemy.hp;
     document.getElementById("prevAtk").innerText = activeEnemy.atk;
     document.getElementById("prevCoin").innerText = activeEnemy.coins;
-    
+
     if(btn) btn.innerText = "Find Monster"; 
   } catch(e) { alert(e.message); resetArenaUI(); }
 }
@@ -179,8 +170,7 @@ async function searchMonster() {
 function startCombat() {
   document.getElementById("arena-preview").style.display = "none";
   document.getElementById("arena-fight").style.display = "block";
-  
-  // ✅ SMART IMAGES FOR BATTLE
+
   const pFile = getImgPath(AUTH.user.character.image);
   const eFile = getImgPath(activeEnemy.image);
 
@@ -193,64 +183,134 @@ function startCombat() {
   eImg.src = `/public/images/${eFile}`;
   eImg.setAttribute("data-filename", eFile);
   eImg.onerror = function() { window.fixImg(this); };
-  
+
   document.getElementById("battlePlayerName").innerText = AUTH.user.character.name;
   document.getElementById("battleEnemyName").innerText = activeEnemy.name;
 
   playerCurrentHp = AUTH.user.character.stats.hp;
   updateBars(activeEnemy.hp, activeEnemy.maxHp, playerCurrentHp, AUTH.user.character.stats.hp);
-  
+
   document.getElementById("fightControls").style.display = "flex";
   document.getElementById("fightEndBtn").style.display = "none";
   document.getElementById("battleLog").innerHTML = "Battle Started...";
+  
+  // Enable button
+  const atkBtn = document.querySelector("#fightControls button.red");
+  atkBtn.disabled = false;
+  atkBtn.style.opacity = "1";
 }
 
 async function attackTurn() {
   const btn = document.querySelector("#fightControls button.red");
-  btn.disabled = true;
+  // 🔥 SPAM FIX: Disable button instantly
+  btn.disabled = true; 
+  btn.style.opacity = "0.5";
+
   const pImg = document.getElementById("battlePlayerImg");
   pImg.classList.add("lunge-right");
   setTimeout(() => pImg.classList.remove("lunge-right"), 300);
 
   try {
-    const res = await fetch("/api/battle", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ telegramId: AUTH.user.telegramId, action: 'attack', currentEnemy: activeEnemy, playerHp: playerCurrentHp }) });
+    const res = await fetch("/api/battle", { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ 
+            telegramId: AUTH.user.telegramId, 
+            action: 'attack', 
+            currentEnemy: activeEnemy, 
+            playerHp: playerCurrentHp 
+        }) 
+    });
     const data = await res.json();
-    
+
+    // Update HP Logic
     activeEnemy.hp = data.newEnemyHp;
     playerCurrentHp = data.newPlayerHp;
     updateBars(activeEnemy.hp, activeEnemy.maxHp, playerCurrentHp, AUTH.user.character.stats.hp);
 
-    data.log.forEach(l => {
-        const val = l.msg.replace(" dmg", "");
-        if(l.type === 'player') {
-            spawnDamage(val, 'enemy', l.isCrit);
-            const eImg = document.getElementById("battleEnemyImg");
-            eImg.classList.add("shake");
-            setTimeout(() => eImg.classList.remove("shake"), 300);
-        } else {
-            setTimeout(() => {
-                spawnDamage(val, 'player', false);
+    // 🔥 ANIMATION LOOP
+    data.log.forEach((l, index) => {
+        setTimeout(() => {
+            if(l.type === 'player') {
+                spawnDamage(l.msg, 'enemy', l.isCrit, false);
+                const eImg = document.getElementById("battleEnemyImg");
+                eImg.classList.add("shake");
+                setTimeout(() => eImg.classList.remove("shake"), 300);
+            } 
+            else if (l.type === 'enemy-miss') {
+                spawnDamage("DODGE!", 'player', false, true); 
+            }
+            else if (l.type === 'levelup') {
+                spawnDamage("LEVEL UP!", 'player', true, false); 
+            }
+            else {
+                spawnDamage(l.msg, 'player', false, false);
                 pImg.classList.add("shake");
                 setTimeout(() => pImg.classList.remove("shake"), 300);
-            }, 500); 
-        }
+            }
+        }, index * 800); 
     });
 
-    if(data.win) { document.getElementById("battleLog").innerHTML = `<span style='color:#2ecc71'>VICTORY! +${activeEnemy.coins} Coins</span>`; endFight(true); }
-    else if(data.playerDied) { document.getElementById("battleLog").innerHTML = `<span style='color:red'>DEFEAT...</span>`; endFight(false); }
+    // Wait for animations to end before allowing next move or showing result
+    setTimeout(() => {
+        if(data.win) { 
+            document.getElementById("battleLog").innerHTML = `<span style='color:#2ecc71; font-weight:bold;'>🏆 VICTORY! <br>+${activeEnemy.coins} Coins</span>`; 
+            endFight(true); 
+        }
+        else if(data.playerDied) { 
+            document.getElementById("battleLog").innerHTML = `<span style='color:#e74c3c; font-weight:bold;'>☠️ DEFEAT...</span>`; 
+            endFight(false); 
+        }
+        
+        if(!data.win && !data.playerDied) {
+            btn.disabled = false;
+            btn.style.opacity = "1";
+        }
+    }, data.log.length * 800);
 
-  } catch(e) { alert(e.message); }
-  btn.disabled = false;
+  } catch(e) { 
+      alert(e.message); 
+      btn.disabled = false; 
+      btn.style.opacity = "1";
+  }
 }
 
-function spawnDamage(val, target, isCrit) {
+function spawnDamage(val, target, isCrit, isDodge) {
     const overlay = document.getElementById("damageOverlay");
     const el = document.createElement("div");
     el.classList.add("damage-text");
-    if(target === 'enemy') { el.classList.add(isCrit ? "dmg-crit" : "dmg-player"); el.style.left = "75%"; el.style.top = "40%"; } else { el.classList.add("dmg-enemy"); el.style.left = "25%"; el.style.top = "40%"; } el.innerText = val; overlay.appendChild(el); setTimeout(() => el.remove(), 800);
+
+    if (isDodge) {
+        el.classList.add("dmg-dodge");
+        el.style.left = "25%"; el.style.top = "20%";
+    } 
+    else if(target === 'enemy') { 
+        el.classList.add(isCrit ? "dmg-crit" : "dmg-player"); 
+        el.style.left = "70%"; el.style.top = "30%"; 
+    } 
+    else { 
+        el.classList.add("dmg-enemy"); 
+        el.style.left = "30%"; el.style.top = "30%"; 
+    }
+    
+    el.innerText = val; 
+    overlay.appendChild(el); 
+    setTimeout(() => el.remove(), 800);
 }
-function updateBars(e, eM, p, pM) { document.getElementById("battleEnemyBar").style.width = (e/eM*100) + "%"; document.getElementById("battlePlayerBar").style.width = (p/pM*100) + "%"; }
-function endFight(win) { document.getElementById("fightControls").style.display = "none"; document.getElementById("fightEndBtn").style.display = "block"; if(win) loadProfile(true); }
-function resetArenaUI() { document.getElementById("arena-select").style.display = "block"; document.getElementById("arena-preview").style.display = "none"; document.getElementById("arena-fight").style.display = "none"; }
+
+function updateBars(e, eM, p, pM) { 
+    document.getElementById("battleEnemyBar").style.width = (e/eM*100) + "%"; 
+    document.getElementById("battlePlayerBar").style.width = (p/pM*100) + "%"; 
+}
+function endFight(win) { 
+    document.getElementById("fightControls").style.display = "none"; 
+    document.getElementById("fightEndBtn").style.display = "block"; 
+    if(win) loadProfile(true); 
+}
+function resetArenaUI() { 
+    document.getElementById("arena-select").style.display = "block"; 
+    document.getElementById("arena-preview").style.display = "none"; 
+    document.getElementById("arena-fight").style.display = "none"; 
+}
 function runAway() { if(confirm("Run away?")) resetArenaUI(); }
 show("profile");
