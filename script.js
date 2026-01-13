@@ -9,11 +9,13 @@ let AUTH = null;
 let activeEnemy = null;
 let playerCurrentHp = 0;
 
+// Helper: Get Clean Image Filename
 function getImgPath(imgName) {
   if (!imgName) return "HarutoHikari.jpg"; 
   return imgName.split('/').pop(); 
 }
 
+// Helper: Fix Broken Images
 window.fixImg = function(imgEl) {
   const filename = imgEl.getAttribute('data-filename');
   if (!filename) return;
@@ -85,7 +87,8 @@ async function loadProfile(silent){
       document.getElementById("coinsMini").innerText = u.coins;
 
       const filename = getImgPath(c.image);
-      // 🔥 XP BAR FIX: Added Math.min to prevent overflow
+      
+      // ✅ FIX: XP Bar Overflow prevented using Math.min
       const xpPercent = Math.min((c.xp / c.xpToNext) * 100, 100);
 
       document.getElementById("profileBox").innerHTML = `
@@ -120,8 +123,10 @@ setInterval(() => {
 }, 3000);
 
 // =========================================
-// 4. BATTLE LOGIC (UPDATED)
+// 4. BATTLE LOGIC (FIXED)
 // =========================================
+
+// Daily Reward
 document.getElementById("dailyBtn").onclick = async () => {
   if(!AUTH) await authUser();
   try {
@@ -135,14 +140,18 @@ document.getElementById("dailyBtn").onclick = async () => {
   } catch(e) { alert("Error: " + e.message); }
 };
 
+// Search Monster
 async function searchMonster() {
   if(!AUTH) await authUser();
   const btn = event?.target; 
   if(btn) btn.innerText = "Searching...";
 
-  // 🔥 FLICKER FIX: Clear old data immediately
+  // ✅ FIX: Clear Old Data to prevent Flickering/Ghosting
+  activeEnemy = null; 
   document.getElementById("prevImage").src = ""; 
   document.getElementById("prevName").innerText = "Loading...";
+  document.getElementById("prevHp").innerText = "-";
+  document.getElementById("prevAtk").innerText = "-";
 
   try {
     const res = await fetch("/api/battle", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ telegramId: AUTH.user.telegramId, action: 'search' }) });
@@ -150,6 +159,8 @@ async function searchMonster() {
 
     document.getElementById("arena-select").style.display = "none";
     document.getElementById("arena-preview").style.display = "block";
+    
+    // Set new enemy
     activeEnemy = data.enemy;
 
     document.getElementById("prevName").innerText = activeEnemy.name;
@@ -167,7 +178,10 @@ async function searchMonster() {
   } catch(e) { alert(e.message); resetArenaUI(); }
 }
 
+// Start Combat UI
 function startCombat() {
+  if(!activeEnemy) return; // Prevent starting if no enemy
+
   document.getElementById("arena-preview").style.display = "none";
   document.getElementById("arena-fight").style.display = "block";
 
@@ -200,12 +214,14 @@ function startCombat() {
   atkBtn.style.opacity = "1";
 }
 
+// Attack Turn Logic
 async function attackTurn() {
   const btn = document.querySelector("#fightControls button.red");
-  // 🔥 SPAM FIX: Disable button instantly
+  // ✅ FIX: Disable button instantly to prevent spam
   btn.disabled = true; 
   btn.style.opacity = "0.5";
 
+  // Player Animation
   const pImg = document.getElementById("battlePlayerImg");
   pImg.classList.add("lunge-right");
   setTimeout(() => pImg.classList.remove("lunge-right"), 300);
@@ -223,12 +239,12 @@ async function attackTurn() {
     });
     const data = await res.json();
 
-    // Update HP Logic
+    // Sync State
     activeEnemy.hp = data.newEnemyHp;
     playerCurrentHp = data.newPlayerHp;
     updateBars(activeEnemy.hp, activeEnemy.maxHp, playerCurrentHp, AUTH.user.character.stats.hp);
 
-    // 🔥 ANIMATION LOOP
+    // ✅ ANIMATION LOOP (With Delay)
     data.log.forEach((l, index) => {
         setTimeout(() => {
             if(l.type === 'player') {
@@ -248,10 +264,10 @@ async function attackTurn() {
                 pImg.classList.add("shake");
                 setTimeout(() => pImg.classList.remove("shake"), 300);
             }
-        }, index * 800); 
+        }, index * 800); // 800ms delay between actions
     });
 
-    // Wait for animations to end before allowing next move or showing result
+    // Wait for animations to end
     setTimeout(() => {
         if(data.win) { 
             document.getElementById("battleLog").innerHTML = `<span style='color:#2ecc71; font-weight:bold;'>🏆 VICTORY! <br>+${activeEnemy.coins} Coins</span>`; 
@@ -262,6 +278,7 @@ async function attackTurn() {
             endFight(false); 
         }
         
+        // Re-enable button if fight continues
         if(!data.win && !data.playerDied) {
             btn.disabled = false;
             btn.style.opacity = "1";
@@ -275,6 +292,7 @@ async function attackTurn() {
   }
 }
 
+// Damage Text Effect
 function spawnDamage(val, target, isCrit, isDodge) {
     const overlay = document.getElementById("damageOverlay");
     const el = document.createElement("div");
@@ -298,6 +316,7 @@ function spawnDamage(val, target, isCrit, isDodge) {
     setTimeout(() => el.remove(), 800);
 }
 
+// UI Helpers
 function updateBars(e, eM, p, pM) { 
     document.getElementById("battleEnemyBar").style.width = (e/eM*100) + "%"; 
     document.getElementById("battlePlayerBar").style.width = (p/pM*100) + "%"; 
