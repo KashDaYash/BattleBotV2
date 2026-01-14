@@ -8,7 +8,6 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-
 <div class="app">
 
   <section id="screen-profile" class="screen active">
@@ -20,67 +19,66 @@
         <div class="coins-badge">💰 <b id="coinsMini">0</b> Coins</div>
       </div>
     </header>
-
     <div class="glass content-box">
-      <h3>📊 Character Stats</h3>
-      <div id="profileBox">Loading data...</div>
+      <h3>📊 Character</h3>
+      <div id="profileBox">Loading...</div>
       <button id="dailyBtn" class="action-btn green">🎁 Claim Daily Reward</button>
     </div>
   </section>
 
-
   <section id="screen-arena" class="screen">
-    
-    <div id="arena-select" class="glass content-box" style="text-align:center; padding:40px 20px;">
-      <h2>⚔️ Battle Arena</h2>
-      <p style="opacity:0.7; margin-bottom:30px">Choose your opponent</p>
-      <button onclick="searchMonster()" class="action-btn" style="background: linear-gradient(45deg, #e67e22, #d35400);">🦖 Find Monster (PvM)</button>
-      <button onclick="alert('PvP Locked')" class="action-btn" style="background:#555; opacity:0.7">🤺 PvP (Locked)</button>
+    <div id="arena-select" class="glass content-box" style="padding:30px 20px;">
+      <h2 style="text-align:center; margin-bottom:20px;">⚔️ Choose Battle Mode</h2>
+      
+      <div onclick="searchMonster()" class="mode-card" style="background:linear-gradient(45deg, #e67e22, #d35400);">
+        <div style="font-size:32px;">🦖</div>
+        <div>
+            <div style="font-weight:bold; font-size:18px;">Monster Hunt</div>
+            <div style="font-size:12px; opacity:0.8;">Safe farming</div>
+        </div>
+      </div>
+
+      <div onclick="searchPvP()" class="mode-card" style="background:linear-gradient(45deg, #c0392b, #8e44ad);">
+        <div style="font-size:32px;">🤺</div>
+        <div>
+            <div style="font-weight:bold; font-size:18px;">PvP Duel</div>
+            <div style="font-size:12px; opacity:0.8;">Fight Players</div>
+        </div>
+      </div>
     </div>
 
     <div id="arena-preview" style="display:none;" class="glass content-box">
-      <h3 style="text-align:center;">🔍 Found Opponent!</h3>
-      
+      <h3 id="previewTitle" style="text-align:center; color:#f1c40f;">🔍 Opponent Found!</h3>
       <div style="text-align:center; margin:20px 0;">
-        <img id="prevImage" class="battle-img" src="" style="border-radius:10px; border:2px solid #fff;">
-        <h2 id="prevName" style="color:#f1c40f; margin-top:10px">Unknown</h2>
+        <img id="prevImage" class="battle-img" src="" style="border-radius:12px;">
+        <h2 id="prevName" style="color:#fff;">Unknown</h2>
+        <p id="prevInfo" style="font-size:12px; color:#aaa;">...</p>
         
         <div style="display:flex; justify-content:center; gap:10px; margin-top:10px;">
-           <span style="border:1px solid #e74c3c; padding:4px 8px; border-radius:6px; color:#e74c3c">❤️ <b id="prevHp">0</b></span>
-           <span style="border:1px solid #e67e22; padding:4px 8px; border-radius:6px; color:#e67e22">⚔️ <b id="prevAtk">0</b></span>
+           <span style="background:#2c3e50; padding:4px 8px; border-radius:6px; color:#e74c3c">❤️ <b id="prevHp">0</b></span>
+           <span style="background:#2c3e50; padding:4px 8px; border-radius:6px; color:#3498db">⚔️ <b id="prevAtk">0</b></span>
         </div>
-        <p style="margin-top:10px; font-size:12px; color:#f1c40f">Reward: 💰 <span id="prevCoin">0</span></p>
       </div>
-
       <div style="display:flex; gap:10px;">
-        <button onclick="searchMonster()" class="action-btn" style="background:#7f8c8d">🔄 Skip</button>
-        <button onclick="startCombat()" class="action-btn red">⚔️ FIGHT</button>
+        <button id="skipBtn" class="action-btn" style="background:#7f8c8d">🔄 Skip</button>
+        <button id="fightBtn" onclick="startCombat()" class="action-btn red">⚔️ FIGHT</button>
       </div>
     </div>
 
     <div id="arena-fight" style="display:none; position:relative; height:100%;">
-      
       <div id="damageOverlay" class="damage-container"></div>
-
       <div class="battle-scene">
-        <div style="text-align:center; position:relative;">
+        <div style="text-align:center;">
            <div class="hp-bar-container" style="width:100px;"><div id="battlePlayerBar" class="hp-bar" style="background:#3498db; width:100%"></div></div>
-           <img id="battlePlayerImg" class="battle-img" src="" style="transform: scaleX(-1);"> </div>
-
-        <div style="text-align:center; position:relative;">
+           <img id="battlePlayerImg" class="battle-img" src="" style="transform: scaleX(-1);"> 
+        </div>
+        <div style="text-align:center;">
            <div class="hp-bar-container" style="width:100px;"><div id="battleEnemyBar" class="hp-bar" style="background:#e74c3c; width:100%"></div></div>
            <img id="battleEnemyImg" class="battle-img" src="">
         </div>
       </div>
-
       <div class="glass" style="margin:10px 15px; padding:15px;">
-        <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:10px;">
-           <span id="battlePlayerName">You</span> 
-           <span style="color:#e74c3c" id="battleEnemyName">Enemy</span>
-        </div>
-
-        <div id="battleLog" style="height:80px; overflow-y:auto; font-size:12px; margin-bottom:10px; opacity:0.8;">Battle Started...</div>
-
+        <div id="battleLog" style="height:100px; overflow-y:auto; font-size:12px; margin-bottom:10px;"></div>
         <div id="fightControls" style="display:flex; gap:10px;">
           <button onclick="runAway()" class="action-btn" style="background:#95a5a6; flex:1">🏃 Run</button>
           <button onclick="attackTurn()" class="action-btn red" style="flex:2">⚔️ ATTACK</button>
@@ -88,11 +86,10 @@
         <button id="fightEndBtn" onclick="resetArenaUI()" class="action-btn green" style="display:none;">✅ Continue</button>
       </div>
     </div>
-
   </section>
 
-  <section id="screen-shop" class="screen"><div class="glass content-box"><h3>🛒 Shop</h3><p>Coming Soon...</p></div></section>
-  <section id="screen-leaderboard" class="screen"><div class="glass content-box"><h3>🏆 Leaderboard</h3><p>Coming Soon...</p></div></section>
+  <section id="screen-shop" class="screen"><div class="glass content-box"></div></section>
+  <section id="screen-leaderboard" class="screen"><div class="glass content-box"></div></section>
 
   <nav class="glass nav">
     <button data-go="arena">🥊</button>
@@ -100,7 +97,6 @@
     <button data-go="leaderboard">🏆</button>
     <button data-go="profile">👤</button>
   </nav>
-
 </div>
 <script src="script.js"></script>
 </body>
