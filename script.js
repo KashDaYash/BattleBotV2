@@ -7,7 +7,8 @@ tg?.expand();
 
 let AUTH = null;
 let activeEnemy = null;
-let playerCurrentHp = 0; // Tracks HP during battle
+let playerCurrentHp = 0;
+let battleMode = 'pvm'; // Tracks current mode: 'pvm' or 'pvp'
 
 // Helper: Get Clean Image Filename
 function getImgPath(imgName) {
@@ -15,16 +16,16 @@ function getImgPath(imgName) {
   return imgName.split('/').pop(); 
 }
 
-// Helper: Fix Broken Images (Fallback)
+// Helper: Fix Broken Images
 window.fixImg = function(imgEl) {
   const filename = imgEl.getAttribute('data-filename');
   if (!filename) return;
-  // Try public path first, then images path, then placeholder
+  
   if (imgEl.src.includes("/public/images/")) {
       imgEl.src = `/images/${filename}`;
   } else if (imgEl.src.includes("/images/")) {
       imgEl.onerror = null; 
-      imgEl.src = "https://placehold.co/100x100/333/fff?text=Item"; 
+      imgEl.src = "https://placehold.co/100x100/333/fff?text=No+Img"; 
   }
 };
 
@@ -35,7 +36,6 @@ const screens = {
   leaderboard: document.getElementById("screen-leaderboard"),
 };
 
-// Navigation Handling
 document.querySelectorAll("nav button").forEach(btn => {
   btn.onclick = () => {
     document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
@@ -48,7 +48,6 @@ function show(name){
   Object.values(screens).forEach(s => s.classList.remove("active"));
   screens[name].classList.add("active");
   
-  // Load specific data when tab opens
   if(name === "profile") loadProfile(false);
   if(name === "arena") resetArenaUI();
   if(name === "shop") loadShop(); 
@@ -56,7 +55,7 @@ function show(name){
 }
 
 // =========================================
-// 2. AUTH, PROFILE & BACKPACK
+// 2. AUTH & PROFILE (Round Avatar, Green HP, Backpack)
 // =========================================
 async function authUser(){
   try {
@@ -92,15 +91,15 @@ async function loadProfile(silent){
       const c = u.character;
       AUTH.user = u; 
       
-      // Update Top Header
+      // Update Header Info
       document.getElementById("coinsMini").innerText = u.coins;
       const userEl = document.getElementById("username");
       const safeName = u.username ? `@${u.username}` : "No Username";
       userEl.innerHTML = `<span style="color:#3b82f6; font-weight:600;">${safeName}</span><br><span style="font-size:11px; opacity:0.6;">ID: ${u.telegramId}</span>`;
 
-      // Character Card Stats
+      // Stats Calculation
       const filename = getImgPath(c.image);
-      const maxHp = 100 + (c.level * 10); // Formula must match backend logic
+      const maxHp = 100 + (c.level * 10);
       const hpPercent = Math.min((c.stats.hp / maxHp) * 100, 100);
       const xpPercent = Math.min((c.xp / c.xpToNext) * 100, 100);
 
@@ -139,7 +138,7 @@ async function loadProfile(silent){
         ${renderBackpack(u.inventory)}
       `;
 
-      // OWNER PANEL BUTTON (Only for ID: 1302298741)
+      // OWNER PANEL BUTTON (ID: 1302298741)
       if (AUTH.user.telegramId === 1302298741) {
           if (!document.getElementById("adminBtn")) {
               const btn = document.createElement("button");
@@ -157,7 +156,7 @@ async function loadProfile(silent){
   } catch(e) { if(!silent) console.error(e); }
 }
 
-// --- BACKPACK HELPERS ---
+// Backpack Renderer
 function renderBackpack(inventory) {
     if (!inventory || inventory.length === 0) {
         return `<div style="padding:15px; text-align:center; background:rgba(0,0,0,0.2); border-radius:10px; font-size:13px; color:#94a3b8;">Empty Backpack</div>`;
@@ -190,14 +189,15 @@ function renderBackpack(inventory) {
     return html;
 }
 
+// Use Potion Action
 async function useItem(itemName) {
     const res = await fetch('/api/shop', {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ telegramId: AUTH.user.telegramId, action: 'use', itemId: itemName })
     });
     const data = await res.json();
-    alert(data.message); // Shows "HP Full" or "Used"
-    if(data.ok) loadProfile(false); // Refresh HP Bar
+    alert(data.message); // Alert shows result or error (Full HP)
+    if(data.ok) loadProfile(false);
 }
 
 // Daily Reward
@@ -209,20 +209,19 @@ document.getElementById("dailyBtn").onclick = async () => {
         body: JSON.stringify({ telegramId: AUTH.user.telegramId })
       });
       const data = await res.json();
-      // Message contains either reward or time remaining
       alert(data.ok ? `🎁 Reward: ${data.reward} coins!` : `⏳ ${data.message}`);
       if(data.ok) loadProfile(false); 
   } catch(e) { alert("Error: " + e.message); }
 };
 
-// Auto Refresh Profile
+// Auto Refresh
 setInterval(() => {
   if(document.getElementById("screen-profile").classList.contains("active")) loadProfile(true); 
 }, 5000);
 
 
 // =========================================
-// 3. SHOP SYSTEM (With Balance)
+// 3. SHOP SYSTEM
 // =========================================
 async function loadShop() {
     const shopContainer = document.querySelector("#screen-shop .content-box");
@@ -233,7 +232,7 @@ async function loadShop() {
         <div style="font-size:20px; font-weight:bold; color:#fff;">💰 ${AUTH?.user?.coins || 0}</div>
     </div>`;
 
-    shopContainer.innerHTML = balanceHtml + "<h3>🛒 Loading Items...</h3>";
+    shopContainer.innerHTML = balanceHtml + "<h3>🛒 Loading...</h3>";
 
     if(!AUTH) await authUser();
 
@@ -286,12 +285,12 @@ async function buyItem(itemName) {
     const data = await res.json();
     alert(data.message);
     if(data.ok) {
-        authUser().then(() => loadShop()); // Reload to show new balance
+        authUser().then(() => loadShop()); 
     } 
 }
 
 // =========================================
-// 4. LEADERBOARD (Filters)
+// 4. LEADERBOARD SYSTEM
 // =========================================
 async function loadLeaderboard(filter = 'level') {
     const box = document.querySelector("#screen-leaderboard .content-box");
@@ -304,7 +303,6 @@ async function loadLeaderboard(filter = 'level') {
         });
         const data = await res.json();
 
-        // Filter Buttons
         let btnLevelStyle = filter === 'level' ? 'background:#facc15; color:#000;' : 'background:rgba(255,255,255,0.1); color:#fff;';
         let btnCoinStyle = filter === 'coins' ? 'background:#facc15; color:#000;' : 'background:rgba(255,255,255,0.1); color:#fff;';
 
@@ -324,7 +322,6 @@ async function loadLeaderboard(filter = 'level') {
                  let rankClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : "";
                  let rankIcon = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index+1}`;
                  let bgStyle = index === 0 ? "background:linear-gradient(90deg, rgba(251, 191, 36, 0.1), transparent); border-left:3px solid #facc15;" : "background:rgba(255,255,255,0.03);";
-                 
                  let displayVal = filter === 'coins' ? `${u.coins} 💰` : `Lvl ${u.character?.level || 1}`;
 
                  html += `
@@ -347,41 +344,77 @@ async function loadLeaderboard(filter = 'level') {
 
 
 // =========================================
-// 5. BATTLE LOGIC (Refined)
+// 5. BATTLE SYSTEM (PvP & PvM)
 // =========================================
+
+// --- Search Monster (PvM) ---
 async function searchMonster() {
-  if(!AUTH) await authUser();
-  const btn = event?.target; 
-  if(btn) btn.innerText = "Searching...";
-
-  activeEnemy = null; 
-  document.getElementById("prevImage").src = ""; 
-  document.getElementById("prevName").innerText = "Loading...";
-
-  try {
-    const res = await fetch("/api/battle", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ telegramId: AUTH.user.telegramId, action: 'search' }) });
-    const data = await res.json();
-
-    document.getElementById("arena-select").style.display = "none";
-    document.getElementById("arena-preview").style.display = "block";
-    
-    activeEnemy = data.enemy;
-
-    document.getElementById("prevName").innerText = activeEnemy.name;
-    const filename = getImgPath(activeEnemy.image);
-    const imgEl = document.getElementById("prevImage");
-    imgEl.src = `/public/images/${filename}`;
-    imgEl.setAttribute("data-filename", filename);
-    imgEl.onerror = function() { window.fixImg(this); };
-
-    document.getElementById("prevHp").innerText = activeEnemy.hp;
-    document.getElementById("prevAtk").innerText = activeEnemy.atk;
-    document.getElementById("prevCoin").innerText = activeEnemy.coins;
-
-    if(btn) btn.innerText = "Find Monster"; 
-  } catch(e) { alert(e.message); resetArenaUI(); }
+    if(!AUTH) await authUser();
+    battleMode = 'pvm';
+    try {
+        const res = await fetch("/api/battle", { 
+            method: "POST", headers: { "Content-Type": "application/json" }, 
+            body: JSON.stringify({ telegramId: AUTH.user.telegramId, action: 'search' }) 
+        });
+        const data = await res.json();
+        setupPreview(data.enemy, false);
+    } catch(e) { alert("Error finding monster"); }
 }
 
+// --- Search Player (PvP) ---
+async function searchPvP() {
+    if(!AUTH) await authUser();
+    const btn = event.target; 
+    btn.innerText = "Finding Match...";
+    battleMode = 'pvp';
+    activeEnemy = null;
+    
+    try {
+        const res = await fetch("/api/pvp", { 
+            method: "POST", headers: { "Content-Type": "application/json" }, 
+            body: JSON.stringify({ telegramId: AUTH.user.telegramId, action: 'search' }) 
+        });
+        const data = await res.json();
+        
+        if(!data.ok) { 
+            alert(data.message); 
+            btn.innerText = "PvP Duel";
+            return; 
+        }
+        
+        setupPreview(data.enemy, true);
+        btn.innerText = "PvP Duel";
+    } catch(e) { alert("Error finding match"); btn.innerText = "PvP Duel"; }
+}
+
+// Unified Preview Setup
+function setupPreview(enemy, isPvP) {
+    document.getElementById("arena-select").style.display = "none";
+    document.getElementById("arena-preview").style.display = "block";
+    activeEnemy = enemy;
+
+    document.getElementById("previewTitle").innerText = isPvP ? "🤺 PvP Opponent Found!" : "🦖 Monster Found!";
+    document.getElementById("prevName").innerText = enemy.name;
+    document.getElementById("prevInfo").innerText = isPvP ? `@${enemy.username} | Lvl ${enemy.level}` : "Monster";
+    
+    const imgEl = document.getElementById("prevImage");
+    const fname = getImgPath(enemy.image);
+    imgEl.src = `/public/images/${fname}`;
+    imgEl.setAttribute("data-filename", fname);
+    imgEl.onerror = function() { window.fixImg(this); };
+
+    document.getElementById("prevHp").innerText = enemy.hp;
+    document.getElementById("prevAtk").innerText = enemy.atk;
+    
+    // Set Skip Button Action dynamically
+    const skipBtn = document.getElementById("skipBtn");
+    // Clone to remove old event listeners
+    const newSkip = skipBtn.cloneNode(true);
+    skipBtn.parentNode.replaceChild(newSkip, skipBtn);
+    newSkip.onclick = isPvP ? searchPvP : searchMonster;
+}
+
+// Start Combat
 function startCombat() {
   if(!activeEnemy) return;
 
@@ -405,13 +438,14 @@ function startCombat() {
   
   const logBox = document.getElementById("battleLog");
   logBox.innerHTML = "";
-  addLog("⚔️ Battle Started!", "neutral");
+  addLog(battleMode === 'pvp' ? "🤺 PvP Duel Started!" : "⚔️ Monster Battle Started!", "neutral");
   
   const atkBtn = document.querySelector("#fightControls button.red");
   atkBtn.disabled = false;
   atkBtn.style.opacity = "1";
 }
 
+// Attack Logic
 async function attackTurn() {
   const btn = document.querySelector("#fightControls button.red");
   btn.disabled = true; 
@@ -421,7 +455,6 @@ async function attackTurn() {
   pImg.classList.add("lunge-right");
   setTimeout(() => pImg.classList.remove("lunge-right"), 300);
 
-  // Store visual state before API returns
   let visualEnemyHp = activeEnemy.hp;
   let visualPlayerHp = playerCurrentHp;
 
@@ -433,7 +466,8 @@ async function attackTurn() {
             telegramId: AUTH.user.telegramId, 
             action: 'attack', 
             currentEnemy: activeEnemy, 
-            playerHp: playerCurrentHp 
+            playerHp: playerCurrentHp,
+            mode: battleMode 
         }) 
     });
     const data = await res.json();
@@ -481,7 +515,6 @@ async function attackTurn() {
     });
 
     setTimeout(() => {
-        // Sync final state
         updateBars(data.newEnemyHp, activeEnemy.maxHp, data.newPlayerHp, AUTH.user.character.stats.hp);
 
         if(data.win) { 
@@ -506,7 +539,7 @@ async function attackTurn() {
   }
 }
 
-// LOGS: Scroll to bottom style
+// Helpers
 function addLog(msg, type) {
     const logBox = document.getElementById("battleLog");
     const p = document.createElement("div");
