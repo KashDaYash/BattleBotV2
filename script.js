@@ -87,8 +87,6 @@ async function loadProfile(silent){
       document.getElementById("coinsMini").innerText = u.coins;
 
       const filename = getImgPath(c.image);
-      
-      // ✅ FIX: XP Bar Overflow prevented using Math.min
       const xpPercent = Math.min((c.xp / c.xpToNext) * 100, 100);
 
       document.getElementById("profileBox").innerHTML = `
@@ -123,10 +121,9 @@ setInterval(() => {
 }, 3000);
 
 // =========================================
-// 4. BATTLE LOGIC (FIXED)
+// 4. BATTLE LOGIC (REAL-TIME UPDATES)
 // =========================================
 
-// Daily Reward
 document.getElementById("dailyBtn").onclick = async () => {
   if(!AUTH) await authUser();
   try {
@@ -140,13 +137,12 @@ document.getElementById("dailyBtn").onclick = async () => {
   } catch(e) { alert("Error: " + e.message); }
 };
 
-// Search Monster
 async function searchMonster() {
   if(!AUTH) await authUser();
   const btn = event?.target; 
   if(btn) btn.innerText = "Searching...";
 
-  // ✅ FIX: Clear Old Data to prevent Flickering/Ghosting
+  // Reset UI
   activeEnemy = null; 
   document.getElementById("prevImage").src = ""; 
   document.getElementById("prevName").innerText = "Loading...";
@@ -160,7 +156,6 @@ async function searchMonster() {
     document.getElementById("arena-select").style.display = "none";
     document.getElementById("arena-preview").style.display = "block";
     
-    // Set new enemy
     activeEnemy = data.enemy;
 
     document.getElementById("prevName").innerText = activeEnemy.name;
@@ -178,9 +173,8 @@ async function searchMonster() {
   } catch(e) { alert(e.message); resetArenaUI(); }
 }
 
-// Start Combat UI
 function startCombat() {
-  if(!activeEnemy) return; // Prevent starting if no enemy
+  if(!activeEnemy) return;
 
   document.getElementById("arena-preview").style.display = "none";
   document.getElementById("arena-fight").style.display = "block";
@@ -201,23 +195,25 @@ function startCombat() {
   document.getElementById("battlePlayerName").innerText = AUTH.user.character.name;
   document.getElementById("battleEnemyName").innerText = activeEnemy.name;
 
+  // Initialize HP
   playerCurrentHp = AUTH.user.character.stats.hp;
   updateBars(activeEnemy.hp, activeEnemy.maxHp, playerCurrentHp, AUTH.user.character.stats.hp);
 
   document.getElementById("fightControls").style.display = "flex";
   document.getElementById("fightEndBtn").style.display = "none";
-  document.getElementById("battleLog").innerHTML = "Battle Started...";
   
-  // Enable button
+  // Clear Logs
+  const logBox = document.getElementById("battleLog");
+  logBox.innerHTML = "";
+  addLog("⚔️ Battle Started!", "neutral");
+  
   const atkBtn = document.querySelector("#fightControls button.red");
   atkBtn.disabled = false;
   atkBtn.style.opacity = "1";
 }
 
-// Attack Turn Logic
 async function attackTurn() {
   const btn = document.querySelector("#fightControls button.red");
-  // ✅ FIX: Disable button instantly to prevent spam
   btn.disabled = true; 
   btn.style.opacity = "0.5";
 
@@ -239,51 +235,77 @@ async function attackTurn() {
     });
     const data = await res.json();
 
-    // Sync State
+    // Store old HP for smooth animation effect (Optional visual logic)
+    let currentEnemyHpDisplay = activeEnemy.hp;
+    let currentPlayerHpDisplay = playerCurrentHp;
+
+    // Backend se naya HP set karo
     activeEnemy.hp = data.newEnemyHp;
     playerCurrentHp = data.newPlayerHp;
-    updateBars(activeEnemy.hp, activeEnemy.maxHp, playerCurrentHp, AUTH.user.character.stats.hp);
 
-    // ✅ ANIMATION LOOP (With Delay)
-    data.log.forEach((l, index) => {
+    // 🔥 LOGIC: Step-by-Step Animation & Log Print
+    let delay = 0;
+
+    data.log.forEach((l) => {
         setTimeout(() => {
             if(l.type === 'player') {
+                // Update Log
+                addLog(`👊 You hit <b>${l.msg}</b> dmg!`, l.isCrit ? "crit" : "player");
                 spawnDamage(l.msg, 'enemy', l.isCrit, false);
+                
+                // Shake Enemy
                 const eImg = document.getElementById("battleEnemyImg");
                 eImg.classList.add("shake");
                 setTimeout(() => eImg.classList.remove("shake"), 300);
+
+                // Update Enemy Bar Instantly
+                currentEnemyHpDisplay -= parseInt(l.msg);
+                if(currentEnemyHpDisplay < 0) currentEnemyHpDisplay = 0;
+                updateBars(currentEnemyHpDisplay, activeEnemy.maxHp, playerCurrentHp, AUTH.user.character.stats.hp);
             } 
             else if (l.type === 'enemy-miss') {
-                spawnDamage("DODGE!", 'player', false, true); 
+                 addLog(`💨 You dodged the attack!`, "dodge");
+                 spawnDamage("DODGE!", 'player', false, true); 
             }
             else if (l.type === 'levelup') {
-                spawnDamage("LEVEL UP!", 'player', true, false); 
+                 addLog(`✨ LEVEL UP! Stats increased!`, "gold");
+                 spawnDamage("LEVEL UP!", 'player', true, false); 
             }
             else {
+                // Update Log
+                addLog(`💔 Enemy hit <b>${l.msg}</b> dmg!`, "enemy");
                 spawnDamage(l.msg, 'player', false, false);
+
+                // Shake Player
                 pImg.classList.add("shake");
                 setTimeout(() => pImg.classList.remove("shake"), 300);
+
+                 // Update Player Bar Instantly (Wait a bit for enemy turn)
+                 updateBars(activeEnemy.hp, activeEnemy.maxHp, playerCurrentHp, AUTH.user.character.stats.hp);
             }
-        }, index * 800); // 800ms delay between actions
+        }, delay);
+        
+        delay += 800; // Har action ke beech 800ms ka gap
     });
 
-    // Wait for animations to end
+    // Final Result Check
     setTimeout(() => {
         if(data.win) { 
-            document.getElementById("battleLog").innerHTML = `<span style='color:#2ecc71; font-weight:bold;'>🏆 VICTORY! <br>+${activeEnemy.coins} Coins</span>`; 
+            addLog(`🏆 <b>VICTORY!</b> +${activeEnemy.coins} Coins`, "win");
+            updateBars(0, activeEnemy.maxHp, playerCurrentHp, AUTH.user.character.stats.hp); // Ensure 0 HP visual
             endFight(true); 
         }
         else if(data.playerDied) { 
-            document.getElementById("battleLog").innerHTML = `<span style='color:#e74c3c; font-weight:bold;'>☠️ DEFEAT...</span>`; 
+            addLog(`☠️ <b>DEFEAT...</b> You fainted.`, "lose");
+            updateBars(activeEnemy.hp, activeEnemy.maxHp, 0, AUTH.user.character.stats.hp); // Ensure 0 HP visual
             endFight(false); 
         }
         
-        // Re-enable button if fight continues
         if(!data.win && !data.playerDied) {
             btn.disabled = false;
             btn.style.opacity = "1";
         }
-    }, data.log.length * 800);
+    }, delay + 200);
 
   } catch(e) { 
       alert(e.message); 
@@ -292,7 +314,24 @@ async function attackTurn() {
   }
 }
 
-// Damage Text Effect
+// 🔥 NEW: Add Realtime Log Function
+function addLog(msg, type) {
+    const logBox = document.getElementById("battleLog");
+    const p = document.createElement("div");
+    p.innerHTML = msg;
+    p.style.marginBottom = "4px";
+    
+    // Colors based on type
+    if(type === 'player') p.style.color = "#3498db"; // Blue
+    if(type === 'crit') p.style.color = "#f1c40f"; // Gold
+    if(type === 'enemy') p.style.color = "#e74c3c"; // Red
+    if(type === 'dodge') p.style.color = "#1abc9c"; // Teal
+    if(type === 'win') p.style.color = "#2ecc71"; // Green
+    if(type === 'lose') p.style.color = "#95a5a6"; // Grey
+    
+    logBox.prepend(p); // Add new log to TOP
+}
+
 function spawnDamage(val, target, isCrit, isDodge) {
     const overlay = document.getElementById("damageOverlay");
     const el = document.createElement("div");
@@ -316,11 +355,19 @@ function spawnDamage(val, target, isCrit, isDodge) {
     setTimeout(() => el.remove(), 800);
 }
 
-// UI Helpers
 function updateBars(e, eM, p, pM) { 
-    document.getElementById("battleEnemyBar").style.width = (e/eM*100) + "%"; 
-    document.getElementById("battlePlayerBar").style.width = (p/pM*100) + "%"; 
+    // Calculate Percentage
+    let ePer = (e / eM) * 100;
+    let pPer = (p / pM) * 100;
+
+    // Limit between 0 and 100
+    if(ePer < 0) ePer = 0;
+    if(pPer < 0) pPer = 0;
+
+    document.getElementById("battleEnemyBar").style.width = ePer + "%"; 
+    document.getElementById("battlePlayerBar").style.width = pPer + "%"; 
 }
+
 function endFight(win) { 
     document.getElementById("fightControls").style.display = "none"; 
     document.getElementById("fightEndBtn").style.display = "block"; 
