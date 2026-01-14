@@ -17,14 +17,10 @@
     .btn-green { background: var(--success); color: black; }
     .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
     .btn-back { background: #dc2626; color: white; margin-top: 20px; }
-    
     .user-row { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid var(--border); }
-    /* 🔥 ROUND PFP IN ADMIN */
     .user-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary); }
     #userListSection { display: none; }
     .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-
-    /* Modal */
     .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:none; justify-content:center; align-items:center; z-index:100; backdrop-filter: blur(4px); }
     .modal { background: var(--card); padding: 20px; border-radius: 12px; width: 90%; max-width: 400px; border: 1px solid var(--border); }
   </style>
@@ -44,7 +40,7 @@
 
   <div class="card">
     <h2>👥 User Management</h2>
-    <p style="font-size:12px; color:#94a3b8; margin-bottom:10px;">Total Players: <b id="totalCount">...</b></p>
+    <p style="font-size:12px; color:#94a3b8; margin-bottom:10px;">Total Players: <b id="totalCount" style="color:white;">Loading...</b></p>
     <button class="btn-outline" onclick="toggleUserList()">📂 Show All Users List</button>
     
     <div id="userListSection" style="margin-top:15px;">
@@ -120,10 +116,19 @@
         } catch(e) { alert("API Error"); return { ok: false }; }
     }
 
+    // 🔥 NEW: LOAD STATS IMMEDIATELY
+    async function loadInitialStats() {
+        const res = await api('getUsers');
+        if(res.ok) {
+            document.getElementById("totalCount").innerText = res.users.length;
+        }
+    }
+    loadInitialStats(); // Call on load
+
     async function searchUser() {
         const query = document.getElementById("searchBox").value.toLowerCase();
         if(!query) return alert("Enter details");
-        const res = await api('getUsers'); // Fetches last 100
+        const res = await api('getUsers');
         if(res.ok) {
             const found = res.users.filter(u => String(u.telegramId).includes(query) || u.fullname.toLowerCase().includes(query) || (u.username && u.username.toLowerCase().includes(query)));
             document.getElementById("searchResult").innerHTML = found.length ? found.map(u => renderRow(u)).join('') : "<p style='text-align:center; color:#ef4444'>No user found</p>";
@@ -144,10 +149,16 @@
 
     function renderRow(u) {
         const uStr = encodeURIComponent(JSON.stringify(u));
+        // ✅ FIX: Username Logic for Admin
+        const userDisplay = u.username ? `<small style="opacity:0.6">@${u.username}</small>` : '';
         return `<div class="user-row">
             <div style="display:flex; align-items:center; gap:10px;">
                 <img src="/public/images/${u.character.image}" class="user-avatar" onerror="this.src='https://placehold.co/50'">
-                <div><div style="font-weight:bold;">${u.fullname}</div><div style="font-size:11px;">${u.coins} 💰</div></div>
+                <div>
+                    <div style="font-weight:bold;">${u.fullname}</div>
+                    ${userDisplay}
+                    <div style="font-size:11px;">${u.coins} 💰</div>
+                </div>
             </div>
             <button class="btn-blue" style="width:auto; padding:5px 10px; font-size:12px;" onclick="openModal('${uStr}')">View</button>
         </div>`;
