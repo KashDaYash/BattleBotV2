@@ -7,15 +7,13 @@ tg?.expand();
 
 let AUTH = null;
 let activeEnemy = null;
-let playerCurrentHp = 0; // Global Player HP Tracker
+let playerCurrentHp = 0;
 
-// Helper: Get Clean Image Filename
 function getImgPath(imgName) {
   if (!imgName) return "HarutoHikari.jpg"; 
   return imgName.split('/').pop(); 
 }
 
-// Helper: Fix Broken Images
 window.fixImg = function(imgEl) {
   const filename = imgEl.getAttribute('data-filename');
   if (!filename) return;
@@ -27,9 +25,6 @@ window.fixImg = function(imgEl) {
   }
 };
 
-// =========================================
-// 2. NAVIGATION
-// =========================================
 const screens = {
   profile: document.getElementById("screen-profile"),
   arena: document.getElementById("screen-arena"),
@@ -48,9 +43,6 @@ function show(name){
   if(name === "arena") resetArenaUI();
 }
 
-// =========================================
-// 3. AUTHENTICATION & PROFILE
-// =========================================
 async function authUser(){
   try {
     const res = await fetch("/api/auth", {
@@ -85,9 +77,7 @@ async function loadProfile(silent){
       const c = u.character;
       AUTH.user = u; 
       document.getElementById("coinsMini").innerText = u.coins;
-
-      // Update Global HP Tracker when profile loads
-      playerCurrentHp = c.stats.hp;
+      playerCurrentHp = c.stats.hp; // Sync HP
 
       const filename = getImgPath(c.image);
       const xpPercent = Math.min((c.xp / c.xpToNext) * 100, 100);
@@ -123,10 +113,6 @@ setInterval(() => {
   if(document.getElementById("screen-profile").classList.contains("active")) loadProfile(true); 
 }, 3000);
 
-// =========================================
-// 4. BATTLE LOGIC (SMOOTH HP BARS)
-// =========================================
-
 document.getElementById("dailyBtn").onclick = async () => {
   if(!AUTH) await authUser();
   try {
@@ -140,17 +126,16 @@ document.getElementById("dailyBtn").onclick = async () => {
   } catch(e) { alert("Error: " + e.message); }
 };
 
+// --- BATTLE LOGIC ---
+
 async function searchMonster() {
   if(!AUTH) await authUser();
   const btn = event?.target; 
   if(btn) btn.innerText = "Searching...";
 
-  // Reset UI
   activeEnemy = null; 
   document.getElementById("prevImage").src = ""; 
   document.getElementById("prevName").innerText = "Loading...";
-  document.getElementById("prevHp").innerText = "-";
-  document.getElementById("prevAtk").innerText = "-";
 
   try {
     const res = await fetch("/api/battle", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ telegramId: AUTH.user.telegramId, action: 'search' }) });
@@ -185,29 +170,19 @@ function startCombat() {
   const pFile = getImgPath(AUTH.user.character.image);
   const eFile = getImgPath(activeEnemy.image);
 
-  const pImg = document.getElementById("battlePlayerImg");
-  pImg.src = `/public/images/${pFile}`;
-  pImg.setAttribute("data-filename", pFile);
-  pImg.onerror = function() { window.fixImg(this); };
-
-  const eImg = document.getElementById("battleEnemyImg");
-  eImg.src = `/public/images/${eFile}`;
-  eImg.setAttribute("data-filename", eFile);
-  eImg.onerror = function() { window.fixImg(this); };
+  document.getElementById("battlePlayerImg").src = `/public/images/${pFile}`;
+  document.getElementById("battleEnemyImg").src = `/public/images/${eFile}`;
 
   document.getElementById("battlePlayerName").innerText = AUTH.user.character.name;
   document.getElementById("battleEnemyName").innerText = activeEnemy.name;
 
-  // IMPORTANT: Set initial HP for bars
   playerCurrentHp = AUTH.user.character.stats.hp; 
-  
-  // Set bars to full initially or current state
   updateBars(activeEnemy.hp, activeEnemy.maxHp, playerCurrentHp, AUTH.user.character.stats.hp);
 
   document.getElementById("fightControls").style.display = "flex";
   document.getElementById("fightEndBtn").style.display = "none";
   
-  // Clear Logs
+  // Clean logs
   const logBox = document.getElementById("battleLog");
   logBox.innerHTML = "";
   addLog("⚔️ Battle Started!", "neutral");
@@ -222,12 +197,11 @@ async function attackTurn() {
   btn.disabled = true; 
   btn.style.opacity = "0.5";
 
-  // Player Animation
   const pImg = document.getElementById("battlePlayerImg");
   pImg.classList.add("lunge-right");
   setTimeout(() => pImg.classList.remove("lunge-right"), 300);
 
-  // 🔥 IMPORTANT: Capture HP BEFORE API updates it
+  // Local calculation for smooth animation
   let visualEnemyHp = activeEnemy.hp;
   let visualPlayerHp = playerCurrentHp;
 
@@ -244,9 +218,9 @@ async function attackTurn() {
     });
     const data = await res.json();
 
-    // NOTE: Hum data ko save karenge, par display 'visual' variables se karenge
+    // Backend update sync
     activeEnemy.hp = data.newEnemyHp;
-    playerCurrentHp = data.newPlayerHp; // Global tracker update
+    playerCurrentHp = data.newPlayerHp;
 
     let delay = 0;
 
@@ -256,49 +230,41 @@ async function attackTurn() {
                 addLog(`👊 You hit <b>${l.msg}</b> dmg!`, l.isCrit ? "crit" : "player");
                 spawnDamage(l.msg, 'enemy', l.isCrit, false);
                 
-                // Shake Enemy
-                const eImg = document.getElementById("battleEnemyImg");
-                eImg.classList.add("shake");
-                setTimeout(() => eImg.classList.remove("shake"), 300);
+                document.getElementById("battleEnemyImg").classList.add("shake");
+                setTimeout(() => document.getElementById("battleEnemyImg").classList.remove("shake"), 300);
 
-                // 🔥 LOGIC FIX: Subtract from VISUAL variable
+                // Smooth bar drop
                 let dmg = parseInt(l.msg);
-                visualEnemyHp -= dmg; 
-                if(visualEnemyHp < 0) visualEnemyHp = 0;
-                
+                visualEnemyHp = Math.max(0, visualEnemyHp - dmg);
                 updateBars(visualEnemyHp, activeEnemy.maxHp, visualPlayerHp, AUTH.user.character.stats.hp);
             } 
             else if (l.type === 'enemy-miss') {
-                 addLog(`💨 You dodged the attack!`, "dodge");
+                 addLog(`💨 You dodged!`, "dodge");
                  spawnDamage("DODGE!", 'player', false, true); 
             }
             else if (l.type === 'levelup') {
-                 addLog(`✨ LEVEL UP! Stats increased!`, "gold");
+                 addLog(`✨ LEVEL UP!`, "gold");
                  spawnDamage("LEVEL UP!", 'player', true, false); 
             }
             else {
-                addLog(`💔 Enemy hit <b>${l.msg}</b> dmg!`, "enemy");
+                addLog(`💔 Took <b>${l.msg}</b> dmg!`, "enemy");
                 spawnDamage(l.msg, 'player', false, false);
 
-                // Shake Player
                 pImg.classList.add("shake");
                 setTimeout(() => pImg.classList.remove("shake"), 300);
 
-                 // 🔥 LOGIC FIX: Subtract from VISUAL variable
+                 // Smooth bar drop
                  let dmg = parseInt(l.msg);
-                 visualPlayerHp -= dmg;
-                 if(visualPlayerHp < 0) visualPlayerHp = 0;
-
+                 visualPlayerHp = Math.max(0, visualPlayerHp - dmg);
                  updateBars(visualEnemyHp, activeEnemy.maxHp, visualPlayerHp, AUTH.user.character.stats.hp);
             }
         }, delay);
         
-        delay += 800; // 800ms gap for each action
+        delay += 800; 
     });
 
-    // End Logic
     setTimeout(() => {
-        // Ensure final state matches backend exactly
+        // Ensure final exact sync
         updateBars(data.newEnemyHp, activeEnemy.maxHp, data.newPlayerHp, AUTH.user.character.stats.hp);
 
         if(data.win) { 
@@ -306,7 +272,7 @@ async function attackTurn() {
             endFight(true); 
         }
         else if(data.playerDied) { 
-            addLog(`☠️ <b>DEFEAT...</b> You fainted.`, "lose");
+            addLog(`☠️ <b>DEFEAT...</b>`, "lose");
             endFight(false); 
         }
         
@@ -323,7 +289,7 @@ async function attackTurn() {
   }
 }
 
-// Log Function
+// LOGS: Append to bottom + Auto Scroll
 function addLog(msg, type) {
     const logBox = document.getElementById("battleLog");
     const p = document.createElement("div");
@@ -337,7 +303,8 @@ function addLog(msg, type) {
     if(type === 'win') p.style.color = "#2ecc71";
     if(type === 'lose') p.style.color = "#95a5a6";
     
-    logBox.prepend(p);
+    logBox.appendChild(p); // Add to bottom
+    logBox.scrollTop = logBox.scrollHeight; // Auto scroll
 }
 
 function spawnDamage(val, target, isCrit, isDodge) {
@@ -357,25 +324,20 @@ function spawnDamage(val, target, isCrit, isDodge) {
         el.classList.add("dmg-enemy"); 
         el.style.left = "30%"; el.style.top = "30%"; 
     }
-    
     el.innerText = val; 
     overlay.appendChild(el); 
     setTimeout(() => el.remove(), 800);
 }
 
 function updateBars(e, eM, p, pM) { 
-    // Calculate percentage based on CURRENT / MAX
+    if(!eM) eM = 100; // Safety
+    if(!pM) pM = 100;
+
     let ePer = (e / eM) * 100;
     let pPer = (p / pM) * 100;
 
-    // Safety clamps
-    if(ePer < 0) ePer = 0;
-    if(pPer < 0) pPer = 0;
-    if(ePer > 100) ePer = 100;
-    if(pPer > 100) pPer = 100;
-
-    document.getElementById("battleEnemyBar").style.width = ePer + "%"; 
-    document.getElementById("battlePlayerBar").style.width = pPer + "%"; 
+    document.getElementById("battleEnemyBar").style.width = Math.max(0, Math.min(100, ePer)) + "%"; 
+    document.getElementById("battlePlayerBar").style.width = Math.max(0, Math.min(100, pPer)) + "%"; 
 }
 
 function endFight(win) { 
