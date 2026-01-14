@@ -8,32 +8,20 @@
   <style>
     :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --primary: #3b82f6; --success: #22c55e; --border: #334155; }
     body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
-    
-    /* Layout Components */
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
     h2 { font-size: 16px; color: var(--primary); margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
-    
-    /* Inputs & Buttons */
     input, select { width: 100%; padding: 12px; background: #020617; border: 1px solid var(--border); color: white; border-radius: 8px; margin-bottom: 10px; box-sizing: border-box; }
     button { width: 100%; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
     button:hover { opacity: 0.9; transform: translateY(-1px); }
-    
     .btn-blue { background: var(--primary); color: white; }
     .btn-green { background: var(--success); color: black; }
     .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
     .btn-back { background: #dc2626; color: white; margin-top: 20px; }
-
-    /* User Table */
+    
     .user-row { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid var(--border); }
-    .user-info { display: flex; align-items: center; gap: 12px; }
-    
-    /* 🔥 ROUND PFP */
-    .user-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary); }
-
-    /* Hidden Section */
+    /* 🔥 ROUND PFP IN ADMIN */
+    .user-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary); }
     #userListSection { display: none; }
-    
-    /* Shop Add Grid */
     .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
     /* Modal */
@@ -43,21 +31,20 @@
 </head>
 <body>
 
-  <h1 style="text-align:center; margin-bottom:20px;">🛡️ ADMIN PANEL</h1>
+  <h1 style="text-align:center; margin-bottom:20px;">🛡️ ADMIN DASHBOARD</h1>
 
   <div class="card">
-    <h2>🔍 Quick Search User</h2>
+    <h2>🔍 Search User</h2>
     <div style="display:flex; gap:10px;">
         <input type="text" id="searchBox" placeholder="Enter Telegram ID or Username...">
-        <button class="btn-blue" style="width:80px;" onclick="searchUser()">Search</button>
+        <button class="btn-blue" style="width:100px;" onclick="searchUser()">Search</button>
     </div>
     <div id="searchResult" style="margin-top:10px;"></div>
   </div>
 
   <div class="card">
-    <h2>👥 User Database</h2>
+    <h2>👥 User Management</h2>
     <p style="font-size:12px; color:#94a3b8; margin-bottom:10px;">Total Players: <b id="totalCount">...</b></p>
-    
     <button class="btn-outline" onclick="toggleUserList()">📂 Show All Users List</button>
     
     <div id="userListSection" style="margin-top:15px;">
@@ -67,42 +54,36 @@
 
   <div class="card">
     <h2>🛍️ Add Shop Item</h2>
-    <input type="text" id="sName" placeholder="Item Name (e.g. Dragon Slayer)">
-    
+    <input type="text" id="sName" placeholder="Item Name (e.g. Shadow Blade)">
     <div class="shop-grid">
         <select id="sType">
-            <option value="weapon">⚔️ Weapon (ATK)</option>
-            <option value="armor">🛡️ Armor (DEF)</option>
-            <option value="potion">🧪 Potion (HEAL)</option>
-            <option value="pet">🐾 Pet (PASSIVE)</option>
+            <option value="weapon">⚔️ Weapon</option>
+            <option value="armor">🛡️ Armor</option>
+            <option value="potion">🧪 Potion</option>
+            <option value="pet">🐾 Pet</option>
         </select>
         <input type="number" id="sPrice" placeholder="Price">
     </div>
-
     <div class="shop-grid">
         <input type="number" id="sStat" placeholder="Stat Value (+)">
         <input type="text" id="sImg" placeholder="Image.png">
     </div>
-
     <button class="btn-green" onclick="addItem()">➕ Add Item</button>
   </div>
 
   <button class="btn-back" onclick="window.location.href='/'">🔙 Back to Game</button>
 
-
   <div class="modal-overlay" id="actionModal">
     <div class="modal">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-            <h3 id="mTitle">User Actions</h3>
-            <button onclick="closeModal()" style="width:auto; background:transparent; font-size:20px;">×</button>
+            <h3 style="margin:0;">User Options</h3>
+            <button onclick="closeModal()" style="width:auto; background:transparent; font-size:24px;">×</button>
         </div>
-        
         <div style="text-align:center; margin-bottom:15px;">
              <img id="mImg" class="user-avatar" style="width:80px; height:80px;" src="">
              <h4 id="mName" style="margin:5px 0;">Name</h4>
              <p id="mId" style="font-size:12px; color:#94a3b8;">ID</p>
         </div>
-
         <button class="btn-outline" onclick="copyId()" style="margin-bottom:10px;">📋 Copy ID</button>
         
         <div style="display:flex; gap:10px; margin-bottom:10px;">
@@ -110,11 +91,18 @@
             <button class="btn-blue" onclick="updateUser('coins')">Add Coins</button>
         </div>
 
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <label style="font-size:12px; color:#ef4444; margin-top:10px; display:block;">Ban Duration (Days)</label>
+        <div style="display:flex; gap:5px; margin-bottom:10px;">
+            <select id="banDays">
+                <option value="permanent">Forever</option>
+                <option value="1">1 Day</option>
+                <option value="3">3 Days</option>
+                <option value="7">7 Days</option>
+            </select>
             <button style="background:#ef4444; color:white;" onclick="banUser()">🚫 Ban</button>
-            <button style="background:#f59e0b; color:black;" onclick="resetUser()">⚠️ Reset</button>
         </div>
-        <button style="background:#7f1d1d; color:white; margin-top:10px;" onclick="deleteUser()">🗑️ Delete Account</button>
+
+        <button style="background:#7f1d1d; color:white; margin-top:5px;" onclick="deleteUser()">🗑️ Delete Account</button>
     </div>
   </div>
 
@@ -132,131 +120,75 @@
         } catch(e) { alert("API Error"); return { ok: false }; }
     }
 
-    // --- SEARCH LOGIC ---
     async function searchUser() {
-        const query = document.getElementById("searchBox").value;
-        if(!query) return alert("Enter ID or Name");
-        
-        // Fetch all to filter (Optimized approach would be backend search, but for now filtering frontend list if loaded, or fetch single)
-        // Since we want robust search, let's fetch list if not loaded, or make a backend search endpoint.
-        // Let's rely on getUsers for simplicity but filter smartly.
-        
-        const res = await api('getUsers');
+        const query = document.getElementById("searchBox").value.toLowerCase();
+        if(!query) return alert("Enter details");
+        const res = await api('getUsers'); // Fetches last 100
         if(res.ok) {
-            const users = res.users;
-            const found = users.filter(u => 
-                String(u.telegramId).includes(query) || 
-                u.fullname.toLowerCase().includes(query.toLowerCase()) ||
-                (u.username && u.username.toLowerCase().includes(query.toLowerCase()))
-            );
-
-            const container = document.getElementById("searchResult");
-            if(found.length === 0) {
-                container.innerHTML = "<p style='color:#ef4444; text-align:center;'>User not found</p>";
-            } else {
-                container.innerHTML = found.map(u => renderUserRow(u)).join('');
-            }
+            const found = res.users.filter(u => String(u.telegramId).includes(query) || u.fullname.toLowerCase().includes(query) || (u.username && u.username.toLowerCase().includes(query)));
+            document.getElementById("searchResult").innerHTML = found.length ? found.map(u => renderRow(u)).join('') : "<p style='text-align:center; color:#ef4444'>No user found</p>";
         }
     }
 
-    // --- LIST LOGIC ---
     async function toggleUserList() {
         const section = document.getElementById("userListSection");
-        const btn = event.target;
-        
         if(section.style.display === "none" || section.style.display === "") {
             section.style.display = "block";
-            btn.innerText = "🔄 Refresh List";
-            
             const res = await api('getUsers');
             if(res.ok) {
                 document.getElementById("totalCount").innerText = res.users.length;
-                document.getElementById("userTable").innerHTML = res.users.map(u => renderUserRow(u)).join('');
+                document.getElementById("userTable").innerHTML = res.users.map(u => renderRow(u)).join('');
             }
-        } else {
-            // Refresh logic if already open
-            const res = await api('getUsers');
-            if(res.ok) {
-                document.getElementById("userTable").innerHTML = res.users.map(u => renderUserRow(u)).join('');
-            }
-        }
+        } else { section.style.display = "none"; }
     }
 
-    function renderUserRow(u) {
-        // Safe stringify for onclick
-        const userStr = encodeURIComponent(JSON.stringify(u));
-        return `
-        <div class="user-row">
-            <div class="user-info">
-                <img src="/public/images/${u.character.image}" onerror="this.src='https://placehold.co/50'" class="user-avatar">
-                <div>
-                    <div style="font-weight:bold; font-size:14px;">${u.fullname}</div>
-                    <div style="font-size:11px; color:#94a3b8;">${u.coins} 💰 | Lvl ${u.character.level}</div>
-                </div>
+    function renderRow(u) {
+        const uStr = encodeURIComponent(JSON.stringify(u));
+        return `<div class="user-row">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <img src="/public/images/${u.character.image}" class="user-avatar" onerror="this.src='https://placehold.co/50'">
+                <div><div style="font-weight:bold;">${u.fullname}</div><div style="font-size:11px;">${u.coins} 💰</div></div>
             </div>
-            <button class="btn-blue" style="width:auto; padding:6px 12px; font-size:12px;" onclick="openModal('${userStr}')">View</button>
+            <button class="btn-blue" style="width:auto; padding:5px 10px; font-size:12px;" onclick="openModal('${uStr}')">View</button>
         </div>`;
     }
 
-    // --- MODAL & ACTIONS ---
-    function openModal(userStr) {
-        const user = JSON.parse(decodeURIComponent(userStr));
-        selectedUser = user;
-        
-        document.getElementById("mImg").src = `/public/images/${user.character.image}`;
-        document.getElementById("mName").innerText = user.fullname;
-        document.getElementById("mId").innerText = user.telegramId;
-        document.getElementById("mAmt").value = "";
-        
+    function openModal(str) {
+        selectedUser = JSON.parse(decodeURIComponent(str));
+        document.getElementById("mName").innerText = selectedUser.fullname;
+        document.getElementById("mId").innerText = selectedUser.telegramId;
+        document.getElementById("mImg").src = `/public/images/${selectedUser.character.image}`;
         document.getElementById("actionModal").style.display = "flex";
     }
-
     function closeModal() { document.getElementById("actionModal").style.display = "none"; }
-    
-    function copyId() {
-        if(selectedUser) {
-            navigator.clipboard.writeText(selectedUser.telegramId);
-            alert("ID Copied!");
-        }
-    }
+    function copyId() { navigator.clipboard.writeText(selectedUser.telegramId); alert("ID Copied"); }
 
     async function updateUser(type) {
         const amt = document.getElementById("mAmt").value;
         if(!amt) return alert("Enter amount");
         const res = await api('updateUser', { targetId: selectedUser.telegramId, type, amount: parseInt(amt) });
-        if(res.ok) alert("Success"); closeModal();
+        if(res.ok) { alert("Done"); closeModal(); }
     }
-
     async function banUser() {
+        const days = document.getElementById("banDays").value;
         if(confirm("Ban user?")) {
-            await api('banUser', { targetId: selectedUser.telegramId, duration: 'permanent' });
-            alert("Banned"); closeModal();
+            await api('banUser', { targetId: selectedUser.telegramId, duration: days });
+            alert("User Banned"); closeModal();
         }
     }
-
-    async function resetUser() {
-        if(confirm("Reset user?")) {
-            await api('resetUser', { targetId: selectedUser.telegramId });
-            alert("Reset Done"); closeModal();
-        }
-    }
-
     async function deleteUser() {
         if(confirm("DELETE PERMANENTLY?")) {
             await api('deleteUser', { targetId: selectedUser.telegramId });
             alert("Deleted"); closeModal();
         }
     }
-
     async function addItem() {
         const name = document.getElementById("sName").value;
         const type = document.getElementById("sType").value;
         const price = document.getElementById("sPrice").value;
         const stat = document.getElementById("sStat").value;
         const img = document.getElementById("sImg").value;
-        
-        if(!name || !price) return alert("Fill details");
-        
+        if(!name || !price) return alert("Fill all details");
         const res = await api('addItem', { name, type, price:parseInt(price), stat:parseInt(stat), image:img });
         if(res.ok) { alert("Item Added"); document.getElementById("sName").value = ""; }
     }
