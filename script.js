@@ -9,21 +9,21 @@ let AUTH = null;
 let activeEnemy = null;
 let playerCurrentHp = 0;
 
-// Helper: Get Clean Image Filename
 function getImgPath(imgName) {
   if (!imgName) return "HarutoHikari.jpg"; 
   return imgName.split('/').pop(); 
 }
 
-// Helper: Fix Broken Images
 window.fixImg = function(imgEl) {
   const filename = imgEl.getAttribute('data-filename');
   if (!filename) return;
+  // Try public first, then images
   if (imgEl.src.includes("/public/images/")) {
       imgEl.src = `/images/${filename}`;
   } else if (imgEl.src.includes("/images/")) {
       imgEl.onerror = null; 
-      imgEl.src = "https://placehold.co/100x100?text=No+Img"; 
+      // Shop items ke liye specific placeholder
+      imgEl.src = "https://placehold.co/100x100/333/fff?text=Item"; 
   }
 };
 
@@ -38,15 +38,18 @@ document.querySelectorAll("nav button").forEach(btn => {
   btn.onclick = () => show(btn.dataset.go);
 });
 
+// 🔥 SHOW FUNCTION UPDATED FOR SHOP & LEADERBOARD
 function show(name){
   Object.values(screens).forEach(s => s.classList.remove("active"));
   screens[name].classList.add("active");
   if(name === "profile") loadProfile(false);
   if(name === "arena") resetArenaUI();
+  if(name === "shop") loadShop(); 
+  if(name === "leaderboard") loadLeaderboard(); // 🔥 New
 }
 
 // =========================================
-// 2. AUTHENTICATION & PROFILE (+ ADMIN)
+// 2. AUTH & PROFILE
 // =========================================
 async function authUser(){
   try {
@@ -84,6 +87,9 @@ async function loadProfile(silent){
       document.getElementById("coinsMini").innerText = u.coins;
       playerCurrentHp = c.stats.hp; 
 
+      const safeUsername = u.username ? `@${u.username}` : "No Username";
+      document.getElementById("username").innerHTML = `${safeUsername} <br> <span style="font-size:11px; opacity:0.6; font-weight:normal;">ID: ${u.telegramId}</span>`;
+
       const filename = getImgPath(c.image);
       const xpPercent = Math.min((c.xp / c.xpToNext) * 100, 100);
 
@@ -111,7 +117,7 @@ async function loadProfile(silent){
         </div>
       `;
 
-      // 🔥 ADMIN BUTTON LOGIC (Only for You)
+      // Admin Button
       if (AUTH.user.telegramId === 1302298741) {
           if (!document.getElementById("adminBtn")) {
               const btn = document.createElement("button");
@@ -146,9 +152,113 @@ document.getElementById("dailyBtn").onclick = async () => {
 };
 
 // =========================================
-// 3. BATTLE LOGIC (FIXED & SMOOTH)
+// 3. SHOP SYSTEM
 // =========================================
+async function loadShop() {
+    const shopContainer = document.querySelector("#screen-shop .content-box");
+    shopContainer.innerHTML = "<h3>🛒 Shop Loading...</h3>";
 
+    if(!AUTH) await authUser();
+
+    try {
+        const res = await fetch('/api/shop', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ telegramId: AUTH.user.telegramId, action: 'getShop' })
+        });
+        const data = await res.json();
+
+        if (!data.items || data.items.length === 0) {
+            shopContainer.innerHTML = "<h3>🛒 Shop</h3><p>Shop is empty.</p>";
+            return;
+        }
+
+        let html = `<h3>🛒 Equipment</h3>`;
+        
+        data.items.forEach(item => {
+            let icon = "❓";
+            let color = "#fff";
+            if(item.type === 'weapon') { icon = "⚔️"; color = "#e74c3c"; }
+            if(item.type === 'armor') { icon = "🛡️"; color = "#3498db"; }
+            if(item.type === 'potion') { icon = "🧪"; color = "#2ecc71"; }
+
+            html += `
+            <div style="background:rgba(255,255,255,0.08); padding:12px; margin-bottom:10px; border-radius:10px; display:flex; align-items:center; gap:12px; border-left:4px solid ${color};">
+                <div style="font-size:24px;">${icon}</div>
+                <div style="flex:1;">
+                    <div style="font-weight:bold;">${item.name}</div>
+                    <div style="font-size:12px; opacity:0.7;">+${item.stat} ${item.type.toUpperCase()}</div>
+                </div>
+                <button onclick="buyItem('${item.name}')" class="action-btn" style="width:auto; padding:6px 12px; font-size:13px; background:#f1c40f; color:#000; margin:0;">
+                    ${item.price} 💰
+                </button>
+            </div>`;
+        });
+        
+        shopContainer.innerHTML = html;
+
+    } catch (e) {
+        shopContainer.innerHTML = "Error loading shop.";
+    }
+}
+
+async function buyItem(itemName) {
+    if(!confirm(`Buy ${itemName}?`)) return;
+
+    const res = await fetch('/api/shop', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ telegramId: AUTH.user.telegramId, action: 'buy', itemId: itemName })
+    });
+    const data = await res.json();
+    alert(data.message);
+    if(data.ok) loadProfile(false); 
+}
+
+// =========================================
+// 4. LEADERBOARD SYSTEM (NEW)
+// =========================================
+async function loadLeaderboard() {
+    const box = document.querySelector("#screen-leaderboard .content-box");
+    box.innerHTML = "<h3>🏆 Leaderboard Loading...</h3>";
+
+    try {
+        const res = await fetch('/api/leaderboard');
+        const data = await res.json();
+
+        let html = `<h3>🏆 Top Players</h3>`;
+        
+        if(data.leaderboard.length === 0) {
+             html += "<p>No players yet.</p>";
+        } else {
+             html += `<div style="display:flex; flex-direction:column; gap:8px;">`;
+             data.leaderboard.forEach((u, index) => {
+                 let rankEmoji = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index+1}`;
+                 let style = index === 0 ? "background:linear-gradient(45deg, #f1c40f33, transparent); border:1px solid #f1c40f;" : "background:rgba(255,255,255,0.05);";
+
+                 html += `
+                 <div style="${style} padding:10px; border-radius:8px; display:flex; align-items:center; justify-content:space-between;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:18px; width:30px;">${rankEmoji}</span>
+                        <div>
+                            <div style="font-weight:bold;">${u.fullname}</div>
+                            <div style="font-size:11px; opacity:0.6;">Lvl ${u.character?.level || 1}</div>
+                        </div>
+                    </div>
+                    <div style="font-weight:bold; color:#f1c40f;">${u.coins} 💰</div>
+                 </div>`;
+             });
+             html += `</div>`;
+        }
+
+        box.innerHTML = html;
+
+    } catch(e) {
+        box.innerHTML = "Error loading leaderboard.";
+    }
+}
+
+// =========================================
+// 5. BATTLE LOGIC (EXISTING)
+// =========================================
 async function searchMonster() {
   if(!AUTH) await authUser();
   const btn = event?.target; 
@@ -203,7 +313,6 @@ function startCombat() {
   document.getElementById("fightControls").style.display = "flex";
   document.getElementById("fightEndBtn").style.display = "none";
   
-  // Clear Logs
   const logBox = document.getElementById("battleLog");
   logBox.innerHTML = "";
   addLog("⚔️ Battle Started!", "neutral");
@@ -222,7 +331,6 @@ async function attackTurn() {
   pImg.classList.add("lunge-right");
   setTimeout(() => pImg.classList.remove("lunge-right"), 300);
 
-  // Smooth animation tracking
   let visualEnemyHp = activeEnemy.hp;
   let visualPlayerHp = playerCurrentHp;
 
@@ -306,7 +414,6 @@ async function attackTurn() {
   }
 }
 
-// LOGS: Scroll to bottom
 function addLog(msg, type) {
     const logBox = document.getElementById("battleLog");
     const p = document.createElement("div");
@@ -369,83 +476,3 @@ function resetArenaUI() {
 }
 function runAway() { if(confirm("Run away?")) resetArenaUI(); }
 show("profile");
-
-// ... Upar ka code same ...
-
-// =========================================
-// SHOP LOGIC
-// =========================================
-
-// Is function ko purane `show` function ke andar connect karna mat bhulna!
-// Jab show('shop') call ho, tab ye function chale:
-
-async function loadShop() {
-    const shopContainer = document.querySelector("#screen-shop .content-box");
-    shopContainer.innerHTML = "Loading Items...";
-
-    if(!AUTH) await authUser();
-
-    try {
-        const res = await fetch('/api/shop', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ telegramId: AUTH.user.telegramId, action: 'getShop' })
-        });
-        const data = await res.json();
-
-        if (data.items.length === 0) {
-            shopContainer.innerHTML = "<p>Shop is empty. Ask Admin to add items!</p>";
-            return;
-        }
-
-        // Render Items
-        shopContainer.innerHTML = `<h3>🛒 Equipment & Potions</h3>`;
-        
-        data.items.forEach(item => {
-            const card = document.createElement("div");
-            card.style.cssText = "background:rgba(255,255,255,0.05); padding:10px; margin-bottom:10px; border-radius:8px; display:flex; align-items:center; gap:10px;";
-            
-            // Icon based on type
-            let icon = "❓";
-            if(item.type === 'weapon') icon = "⚔️";
-            if(item.type === 'armor') icon = "🛡️";
-            if(item.type === 'potion') icon = "🧪";
-
-            card.innerHTML = `
-                <div style="font-size:24px;">${icon}</div>
-                <div style="flex:1;">
-                    <div style="font-weight:bold;">${item.name}</div>
-                    <div style="font-size:12px; opacity:0.7;">+${item.stat} ${item.type.toUpperCase()}</div>
-                </div>
-                <button onclick="buyItem('${item.name}')" class="action-btn" style="width:auto; padding:5px 15px; font-size:12px; background:#f1c40f; color:#000;">
-                    ${item.price} 💰
-                </button>
-            `;
-            shopContainer.appendChild(card);
-        });
-
-    } catch (e) {
-        shopContainer.innerHTML = "Error loading shop.";
-    }
-}
-
-async function buyItem(itemName) {
-    if(!confirm(`Buy ${itemName}?`)) return;
-
-    const res = await fetch('/api/shop', {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ telegramId: AUTH.user.telegramId, action: 'buy', itemId: itemName })
-    });
-    const data = await res.json();
-    alert(data.message);
-    if(data.ok) loadProfile(false); // Update Coins display
-}
-
-// ⚠️ IMPORTANT: Update the `show` function at the top of script.js
-function show(name){
-  Object.values(screens).forEach(s => s.classList.remove("active"));
-  screens[name].classList.add("active");
-  if(name === "profile") loadProfile(false);
-  if(name === "arena") resetArenaUI();
-  if(name === "shop") loadShop(); // 🔥 ADD THIS LINE
-}
-
