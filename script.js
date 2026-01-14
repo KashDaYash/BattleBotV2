@@ -9,11 +9,13 @@ let AUTH = null;
 let activeEnemy = null;
 let playerCurrentHp = 0;
 
+// Helper: Get Clean Image Filename
 function getImgPath(imgName) {
   if (!imgName) return "HarutoHikari.jpg"; 
   return imgName.split('/').pop(); 
 }
 
+// Helper: Fix Broken Images
 window.fixImg = function(imgEl) {
   const filename = imgEl.getAttribute('data-filename');
   if (!filename) return;
@@ -43,6 +45,9 @@ function show(name){
   if(name === "arena") resetArenaUI();
 }
 
+// =========================================
+// 2. AUTHENTICATION & PROFILE (+ ADMIN)
+// =========================================
 async function authUser(){
   try {
     const res = await fetch("/api/auth", {
@@ -77,7 +82,7 @@ async function loadProfile(silent){
       const c = u.character;
       AUTH.user = u; 
       document.getElementById("coinsMini").innerText = u.coins;
-      playerCurrentHp = c.stats.hp; // Sync HP
+      playerCurrentHp = c.stats.hp; 
 
       const filename = getImgPath(c.image);
       const xpPercent = Math.min((c.xp / c.xpToNext) * 100, 100);
@@ -105,6 +110,20 @@ async function loadProfile(silent){
           </div>
         </div>
       `;
+
+      // 🔥 ADMIN BUTTON LOGIC (Only for You)
+      if (AUTH.user.telegramId === 1302298741) {
+          if (!document.getElementById("adminBtn")) {
+              const btn = document.createElement("button");
+              btn.id = "adminBtn";
+              btn.innerText = "👮‍♂️ OPEN ADMIN PANEL";
+              btn.className = "action-btn"; 
+              btn.style.background = "#2c3e50"; 
+              btn.style.marginTop = "10px";
+              btn.onclick = () => { window.location.href = "admin.html"; };
+              document.querySelector("#screen-profile .content-box").appendChild(btn);
+          }
+      }
     }
   } catch(e) { if(!silent) console.error(e); }
 }
@@ -126,7 +145,9 @@ document.getElementById("dailyBtn").onclick = async () => {
   } catch(e) { alert("Error: " + e.message); }
 };
 
-// --- BATTLE LOGIC ---
+// =========================================
+// 3. BATTLE LOGIC (FIXED & SMOOTH)
+// =========================================
 
 async function searchMonster() {
   if(!AUTH) await authUser();
@@ -182,7 +203,7 @@ function startCombat() {
   document.getElementById("fightControls").style.display = "flex";
   document.getElementById("fightEndBtn").style.display = "none";
   
-  // Clean logs
+  // Clear Logs
   const logBox = document.getElementById("battleLog");
   logBox.innerHTML = "";
   addLog("⚔️ Battle Started!", "neutral");
@@ -201,7 +222,7 @@ async function attackTurn() {
   pImg.classList.add("lunge-right");
   setTimeout(() => pImg.classList.remove("lunge-right"), 300);
 
-  // Local calculation for smooth animation
+  // Smooth animation tracking
   let visualEnemyHp = activeEnemy.hp;
   let visualPlayerHp = playerCurrentHp;
 
@@ -218,7 +239,6 @@ async function attackTurn() {
     });
     const data = await res.json();
 
-    // Backend update sync
     activeEnemy.hp = data.newEnemyHp;
     playerCurrentHp = data.newPlayerHp;
 
@@ -233,7 +253,6 @@ async function attackTurn() {
                 document.getElementById("battleEnemyImg").classList.add("shake");
                 setTimeout(() => document.getElementById("battleEnemyImg").classList.remove("shake"), 300);
 
-                // Smooth bar drop
                 let dmg = parseInt(l.msg);
                 visualEnemyHp = Math.max(0, visualEnemyHp - dmg);
                 updateBars(visualEnemyHp, activeEnemy.maxHp, visualPlayerHp, AUTH.user.character.stats.hp);
@@ -253,7 +272,6 @@ async function attackTurn() {
                 pImg.classList.add("shake");
                 setTimeout(() => pImg.classList.remove("shake"), 300);
 
-                 // Smooth bar drop
                  let dmg = parseInt(l.msg);
                  visualPlayerHp = Math.max(0, visualPlayerHp - dmg);
                  updateBars(visualEnemyHp, activeEnemy.maxHp, visualPlayerHp, AUTH.user.character.stats.hp);
@@ -264,7 +282,6 @@ async function attackTurn() {
     });
 
     setTimeout(() => {
-        // Ensure final exact sync
         updateBars(data.newEnemyHp, activeEnemy.maxHp, data.newPlayerHp, AUTH.user.character.stats.hp);
 
         if(data.win) { 
@@ -289,7 +306,7 @@ async function attackTurn() {
   }
 }
 
-// LOGS: Append to bottom + Auto Scroll
+// LOGS: Scroll to bottom
 function addLog(msg, type) {
     const logBox = document.getElementById("battleLog");
     const p = document.createElement("div");
@@ -303,8 +320,8 @@ function addLog(msg, type) {
     if(type === 'win') p.style.color = "#2ecc71";
     if(type === 'lose') p.style.color = "#95a5a6";
     
-    logBox.appendChild(p); // Add to bottom
-    logBox.scrollTop = logBox.scrollHeight; // Auto scroll
+    logBox.appendChild(p); 
+    logBox.scrollTop = logBox.scrollHeight; 
 }
 
 function spawnDamage(val, target, isCrit, isDodge) {
@@ -330,7 +347,7 @@ function spawnDamage(val, target, isCrit, isDodge) {
 }
 
 function updateBars(e, eM, p, pM) { 
-    if(!eM) eM = 100; // Safety
+    if(!eM) eM = 100; 
     if(!pM) pM = 100;
 
     let ePer = (e / eM) * 100;
