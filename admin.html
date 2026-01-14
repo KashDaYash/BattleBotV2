@@ -3,187 +3,124 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BattleBot Pro Admin</title>
+  <title>BattleBot Admin Pro</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    /* --- CSS VARIABLES & RESET --- */
-    :root {
-      --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --text-muted: #94a3b8;
-      --primary: #3b82f6; --success: #22c55e; --danger: #ef4444; --warning: #f59e0b;
-      --border: #334155;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-    body { background: var(--bg); color: var(--text); padding: 20px; }
-
-    /* --- LAYOUT --- */
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid var(--border); }
-    .grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; max-width: 1400px; margin: 0 auto; }
+    :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --primary: #3b82f6; --success: #22c55e; --border: #334155; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
     
-    /* --- CARDS --- */
-    .card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .card h2 { font-size: 18px; margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 8px; }
-
-    /* --- FORMS & INPUTS --- */
-    .form-group { margin-bottom: 12px; }
-    label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 5px; }
-    input, select { width: 100%; padding: 10px; background: #020617; border: 1px solid var(--border); color: white; border-radius: 6px; outline: none; transition: 0.2s; }
-    input:focus { border-color: var(--primary); }
+    /* Layout Components */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+    h2 { font-size: 16px; color: var(--primary); margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
     
-    /* --- BUTTONS --- */
-    button { cursor: pointer; padding: 10px 16px; border-radius: 6px; border: none; font-weight: 600; transition: 0.2s; }
+    /* Inputs & Buttons */
+    input, select { width: 100%; padding: 12px; background: #020617; border: 1px solid var(--border); color: white; border-radius: 8px; margin-bottom: 10px; box-sizing: border-box; }
+    button { width: 100%; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
     button:hover { opacity: 0.9; transform: translateY(-1px); }
-    .btn-primary { background: var(--primary); color: white; width: 100%; }
-    .btn-sm { padding: 6px 12px; font-size: 12px; width: auto; }
-    .btn-view { background: var(--border); color: white; }
     
-    /* --- TABLE --- */
-    table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    th { text-align: left; color: var(--text-muted); padding: 12px; border-bottom: 1px solid var(--border); font-weight: 600; }
-    td { padding: 12px; border-bottom: 1px solid var(--border); }
-    tr:hover { background: rgba(255,255,255,0.02); }
-    .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; background: var(--border); }
-    
-    /* --- MODAL (POPUP) --- */
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: none; justify-content: center; align-items: center; z-index: 100; }
-    .modal { background: var(--card); width: 90%; max-width: 500px; padding: 25px; border-radius: 12px; border: 1px solid var(--border); position: relative; animation: slideUp 0.3s ease; }
-    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-    .close-modal { position: absolute; top: 15px; right: 15px; background: none; color: var(--text-muted); font-size: 20px; }
-    
-    .user-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border); }
-    .user-avatar { width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--primary); }
-    
-    .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-    
-    /* --- TOAST --- */
-    .toast { position: fixed; bottom: 20px; right: 20px; background: var(--card); padding: 12px 20px; border-radius: 8px; border-left: 4px solid var(--primary); box-shadow: 0 5px 15px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 10px; transform: translateX(120%); transition: 0.3s; z-index: 200; }
-    .toast.show { transform: translateX(0); }
-    .toast.success { border-color: var(--success); }
-    .toast.error { border-color: var(--danger); }
+    .btn-blue { background: var(--primary); color: white; }
+    .btn-green { background: var(--success); color: black; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-back { background: #dc2626; color: white; margin-top: 20px; }
 
+    /* User Table */
+    .user-row { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid var(--border); }
+    .user-info { display: flex; align-items: center; gap: 12px; }
+    
+    /* 🔥 ROUND PFP */
+    .user-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary); }
+
+    /* Hidden Section */
+    #userListSection { display: none; }
+    
+    /* Shop Add Grid */
+    .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    /* Modal */
+    .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:none; justify-content:center; align-items:center; z-index:100; backdrop-filter: blur(4px); }
+    .modal { background: var(--card); padding: 20px; border-radius: 12px; width: 90%; max-width: 400px; border: 1px solid var(--border); }
   </style>
 </head>
 <body>
 
-  <div class="header">
-    <h1>🛡️ Control Center</h1>
-    <div>
-        <span style="color:var(--text-muted); font-size:14px; margin-right:10px;">Total Players: <b id="totalStats" style="color:white">...</b></span>
-        <button class="btn-sm btn-primary" onclick="loadUsers()">🔄 Refresh</button>
+  <h1 style="text-align:center; margin-bottom:20px;">🛡️ ADMIN PANEL</h1>
+
+  <div class="card">
+    <h2>🔍 Quick Search User</h2>
+    <div style="display:flex; gap:10px;">
+        <input type="text" id="searchBox" placeholder="Enter Telegram ID or Username...">
+        <button class="btn-blue" style="width:80px;" onclick="searchUser()">Search</button>
     </div>
+    <div id="searchResult" style="margin-top:10px;"></div>
   </div>
 
-  <div class="grid">
+  <div class="card">
+    <h2>👥 User Database</h2>
+    <p style="font-size:12px; color:#94a3b8; margin-bottom:10px;">Total Players: <b id="totalCount">...</b></p>
     
-    <div class="card">
-      <h2>🛍️ Add Shop Item</h2>
-      <div class="form-group">
-        <label>Item Name</label>
-        <input type="text" id="sName" placeholder="Ex: Dragon Sword">
-      </div>
-      <div class="form-group">
-        <label>Category</label>
+    <button class="btn-outline" onclick="toggleUserList()">📂 Show All Users List</button>
+    
+    <div id="userListSection" style="margin-top:15px;">
+        <div id="userTable">Loading...</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🛍️ Add Shop Item</h2>
+    <input type="text" id="sName" placeholder="Item Name (e.g. Dragon Slayer)">
+    
+    <div class="shop-grid">
         <select id="sType">
-            <option value="weapon">⚔️ Weapon (Attack)</option>
-            <option value="armor">🛡️ Armor (Defense)</option>
-            <option value="potion">🧪 Potion (Heal/Buff)</option>
-            <option value="pet">🐾 Pet (Passive)</option>
+            <option value="weapon">⚔️ Weapon (ATK)</option>
+            <option value="armor">🛡️ Armor (DEF)</option>
+            <option value="potion">🧪 Potion (HEAL)</option>
+            <option value="pet">🐾 Pet (PASSIVE)</option>
         </select>
-      </div>
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-          <div class="form-group">
-            <label>Price (Coins)</label>
-            <input type="number" id="sPrice" placeholder="0">
-          </div>
-          <div class="form-group">
-            <label>Stat Value (+)</label>
-            <input type="number" id="sStat" placeholder="0">
-          </div>
-      </div>
-      <div class="form-group">
-        <label>Image Filename</label>
-        <input type="text" id="sImg" placeholder="Ex: sword.png">
-      </div>
-      <button class="btn-primary" onclick="addItem()">➕ Add Item to Database</button>
+        <input type="number" id="sPrice" placeholder="Price">
     </div>
 
-    <div class="card">
-      <h2>👥 Player Database</h2>
-      <div class="form-group">
-        <input type="text" id="searchBox" placeholder="🔍 Search by Name, ID or Username..." onkeyup="filterUsers()">
-      </div>
-      <div style="overflow-x:auto;">
-        <table>
-          <thead>
-            <tr>
-              <th>User</th>
-              <th>Level</th>
-              <th>Coins</th>
-              <th style="text-align:right;">Action</th>
-            </tr>
-          </thead>
-          <tbody id="userTable">
-            <tr><td colspan="4" style="text-align:center; padding:20px;">Loading...</td></tr>
-          </tbody>
-        </table>
-      </div>
+    <div class="shop-grid">
+        <input type="number" id="sStat" placeholder="Stat Value (+)">
+        <input type="text" id="sImg" placeholder="Image.png">
     </div>
+
+    <button class="btn-green" onclick="addItem()">➕ Add Item</button>
   </div>
 
-  <div class="modal-overlay" id="userModal">
+  <button class="btn-back" onclick="window.location.href='/'">🔙 Back to Game</button>
+
+
+  <div class="modal-overlay" id="actionModal">
     <div class="modal">
-        <button class="close-modal" onclick="closeModal()">×</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h3 id="mTitle">User Actions</h3>
+            <button onclick="closeModal()" style="width:auto; background:transparent; font-size:20px;">×</button>
+        </div>
         
-        <div class="user-header">
-            <img src="" id="mAvatar" class="user-avatar">
-            <div>
-                <h3 id="mName">User Name</h3>
-                <p id="mId" style="color:var(--text-muted); font-size:12px; margin-top:2px;">ID: 12345</p>
-            </div>
-            <button onclick="copyId()" class="btn-sm" style="margin-left:auto; background:var(--bg);">📋 Copy ID</button>
+        <div style="text-align:center; margin-bottom:15px;">
+             <img id="mImg" class="user-avatar" style="width:80px; height:80px;" src="">
+             <h4 id="mName" style="margin:5px 0;">Name</h4>
+             <p id="mId" style="font-size:12px; color:#94a3b8;">ID</p>
         </div>
 
-        <label>💰 Give Resources (Enter Custom Amount)</label>
-        <div style="display:flex; gap:10px; margin-bottom:15px;">
-            <input type="number" id="mAmount" placeholder="Amount (e.g. 1000)" style="flex:1">
-            <button onclick="updateUser('coins')" class="btn-sm" style="background:var(--warning); color:black;">Add Coins</button>
-            <button onclick="updateUser('xp')" class="btn-sm" style="background:#8b5cf6; color:white;">Add XP</button>
+        <button class="btn-outline" onclick="copyId()" style="margin-bottom:10px;">📋 Copy ID</button>
+        
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
+            <input type="number" id="mAmt" placeholder="Amount">
+            <button class="btn-blue" onclick="updateUser('coins')">Add Coins</button>
         </div>
 
-        <label style="color:var(--danger)">🚫 Danger Zone</label>
-        <div class="action-grid">
-            <select id="banDuration">
-                <option value="permanent">Permanent Ban</option>
-                <option value="1">1 Day Ban</option>
-                <option value="3">3 Days Ban</option>
-                <option value="7">7 Days Ban</option>
-            </select>
-            <button onclick="banUser()" style="background:var(--danger); color:white;">🔨 Ban User</button>
-            
-            <button onclick="resetUser()" style="background:var(--warning); color:black;">⚠️ Reset Account</button>
-            <button onclick="deleteUser()" style="background:#991b1b; color:white;">🗑️ Delete Permanent</button>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <button style="background:#ef4444; color:white;" onclick="banUser()">🚫 Ban</button>
+            <button style="background:#f59e0b; color:black;" onclick="resetUser()">⚠️ Reset</button>
         </div>
+        <button style="background:#7f1d1d; color:white; margin-top:10px;" onclick="deleteUser()">🗑️ Delete Account</button>
     </div>
-  </div>
-
-  <div id="toast" class="toast">
-    <span id="toastIcon">✅</span>
-    <span id="toastMsg">Success!</span>
   </div>
 
   <script>
     const ADMIN_ID = 1302298741;
-    let currentUsers = [];
     let selectedUser = null;
-
-    // --- UTILS ---
-    function showToast(msg, type='success') {
-        const t = document.getElementById('toast');
-        const icon = document.getElementById('toastIcon');
-        t.className = `toast show ${type}`;
-        t.querySelector('#toastMsg').innerText = msg;
-        icon.innerText = type === 'success' ? '✅' : '⚠️';
-        setTimeout(() => t.classList.remove('show'), 3000);
-    }
 
     async function api(action, payload={}) {
         try {
@@ -192,124 +129,137 @@
                 body: JSON.stringify({ adminId: ADMIN_ID, action, ...payload })
             });
             return await res.json();
-        } catch(e) {
-            showToast("Server Error", "error");
-            return { ok: false };
+        } catch(e) { alert("API Error"); return { ok: false }; }
+    }
+
+    // --- SEARCH LOGIC ---
+    async function searchUser() {
+        const query = document.getElementById("searchBox").value;
+        if(!query) return alert("Enter ID or Name");
+        
+        // Fetch all to filter (Optimized approach would be backend search, but for now filtering frontend list if loaded, or fetch single)
+        // Since we want robust search, let's fetch list if not loaded, or make a backend search endpoint.
+        // Let's rely on getUsers for simplicity but filter smartly.
+        
+        const res = await api('getUsers');
+        if(res.ok) {
+            const users = res.users;
+            const found = users.filter(u => 
+                String(u.telegramId).includes(query) || 
+                u.fullname.toLowerCase().includes(query.toLowerCase()) ||
+                (u.username && u.username.toLowerCase().includes(query.toLowerCase()))
+            );
+
+            const container = document.getElementById("searchResult");
+            if(found.length === 0) {
+                container.innerHTML = "<p style='color:#ef4444; text-align:center;'>User not found</p>";
+            } else {
+                container.innerHTML = found.map(u => renderUserRow(u)).join('');
+            }
         }
     }
 
-    // --- LOAD DATA ---
-    async function loadUsers() {
-        const data = await api('getUsers');
-        if(data.ok) {
-            currentUsers = data.users;
-            document.getElementById("totalStats").innerText = currentUsers.length;
-            renderTable(currentUsers);
+    // --- LIST LOGIC ---
+    async function toggleUserList() {
+        const section = document.getElementById("userListSection");
+        const btn = event.target;
+        
+        if(section.style.display === "none" || section.style.display === "") {
+            section.style.display = "block";
+            btn.innerText = "🔄 Refresh List";
+            
+            const res = await api('getUsers');
+            if(res.ok) {
+                document.getElementById("totalCount").innerText = res.users.length;
+                document.getElementById("userTable").innerHTML = res.users.map(u => renderUserRow(u)).join('');
+            }
+        } else {
+            // Refresh logic if already open
+            const res = await api('getUsers');
+            if(res.ok) {
+                document.getElementById("userTable").innerHTML = res.users.map(u => renderUserRow(u)).join('');
+            }
         }
     }
 
-    function renderTable(users) {
-        const tbody = document.getElementById("userTable");
-        if(users.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No users found.</td></tr>`;
-            return;
-        }
-        tbody.innerHTML = users.map(u => `
-            <tr>
-                <td>
-                    <div style="font-weight:600;">${u.fullname}</div>
-                    <div style="font-size:11px; color:#64748b;">@${u.username || 'none'}</div>
-                </td>
-                <td><span class="badge">Lvl ${u.character.level}</span></td>
-                <td style="color:var(--warning); font-weight:bold;">${u.coins}</td>
-                <td style="text-align:right;">
-                    <button class="btn-sm btn-view" onclick='openUserModal(${JSON.stringify(u)})'>👁️ View</button>
-                </td>
-            </tr>
-        `).join('');
+    function renderUserRow(u) {
+        // Safe stringify for onclick
+        const userStr = encodeURIComponent(JSON.stringify(u));
+        return `
+        <div class="user-row">
+            <div class="user-info">
+                <img src="/public/images/${u.character.image}" onerror="this.src='https://placehold.co/50'" class="user-avatar">
+                <div>
+                    <div style="font-weight:bold; font-size:14px;">${u.fullname}</div>
+                    <div style="font-size:11px; color:#94a3b8;">${u.coins} 💰 | Lvl ${u.character.level}</div>
+                </div>
+            </div>
+            <button class="btn-blue" style="width:auto; padding:6px 12px; font-size:12px;" onclick="openModal('${userStr}')">View</button>
+        </div>`;
     }
 
-    // --- SEARCH ---
-    function filterUsers() {
-        const term = document.getElementById("searchBox").value.toLowerCase();
-        const filtered = currentUsers.filter(u => 
-            u.fullname.toLowerCase().includes(term) || 
-            (u.username && u.username.toLowerCase().includes(term)) ||
-            String(u.telegramId).includes(term)
-        );
-        renderTable(filtered);
-    }
-
-    // --- MODAL LOGIC ---
-    function openUserModal(user) {
+    // --- MODAL & ACTIONS ---
+    function openModal(userStr) {
+        const user = JSON.parse(decodeURIComponent(userStr));
         selectedUser = user;
+        
+        document.getElementById("mImg").src = `/public/images/${user.character.image}`;
         document.getElementById("mName").innerText = user.fullname;
-        document.getElementById("mId").innerText = "ID: " + user.telegramId;
-        document.getElementById("mAvatar").src = `/public/images/${user.character.image}` || "https://placehold.co/100"; 
+        document.getElementById("mId").innerText = user.telegramId;
+        document.getElementById("mAmt").value = "";
         
-        // Reset Inputs
-        document.getElementById("mAmount").value = "";
-        
-        // Show Modal
-        document.getElementById("userModal").style.display = 'flex';
+        document.getElementById("actionModal").style.display = "flex";
     }
 
-    function closeModal() {
-        document.getElementById("userModal").style.display = 'none';
-        selectedUser = null;
-    }
-
+    function closeModal() { document.getElementById("actionModal").style.display = "none"; }
+    
     function copyId() {
-        if(!selectedUser) return;
-        navigator.clipboard.writeText(selectedUser.telegramId);
-        showToast("ID Copied!");
+        if(selectedUser) {
+            navigator.clipboard.writeText(selectedUser.telegramId);
+            alert("ID Copied!");
+        }
     }
 
-    // --- ACTIONS ---
     async function updateUser(type) {
-        const amt = document.getElementById("mAmount").value;
-        if(!amt) return showToast("Enter an amount first!", "error");
-        
+        const amt = document.getElementById("mAmt").value;
+        if(!amt) return alert("Enter amount");
         const res = await api('updateUser', { targetId: selectedUser.telegramId, type, amount: parseInt(amt) });
-        if(res.ok) { showToast(`Added ${amt} ${type}`); loadUsers(); }
+        if(res.ok) alert("Success"); closeModal();
     }
 
     async function banUser() {
-        const duration = document.getElementById("banDuration").value;
-        if(!confirm("Are you sure you want to BAN this user?")) return;
-        
-        const res = await api('banUser', { targetId: selectedUser.telegramId, duration });
-        if(res.ok) { showToast("User Banned 🔨"); closeModal(); loadUsers(); }
+        if(confirm("Ban user?")) {
+            await api('banUser', { targetId: selectedUser.telegramId, duration: 'permanent' });
+            alert("Banned"); closeModal();
+        }
     }
 
     async function resetUser() {
-        if(!confirm("RESET this user to Level 1?")) return;
-        const res = await api('resetUser', { targetId: selectedUser.telegramId });
-        if(res.ok) { showToast("User Reset 🔄"); loadUsers(); }
+        if(confirm("Reset user?")) {
+            await api('resetUser', { targetId: selectedUser.telegramId });
+            alert("Reset Done"); closeModal();
+        }
     }
 
     async function deleteUser() {
-        if(!confirm("DELETE this account permanently? Irreversible!")) return;
-        const res = await api('deleteUser', { targetId: selectedUser.telegramId });
-        if(res.ok) { showToast("User Deleted 🗑️"); closeModal(); loadUsers(); }
+        if(confirm("DELETE PERMANENTLY?")) {
+            await api('deleteUser', { targetId: selectedUser.telegramId });
+            alert("Deleted"); closeModal();
+        }
     }
 
-    // --- SHOP ACTIONS ---
     async function addItem() {
         const name = document.getElementById("sName").value;
         const type = document.getElementById("sType").value;
         const price = document.getElementById("sPrice").value;
         const stat = document.getElementById("sStat").value;
         const img = document.getElementById("sImg").value;
-
-        if(!name || !price || !stat || !img) return showToast("All fields are required!", "error");
-
-        const res = await api('addItem', { name, type, price: parseInt(price), stat: parseInt(stat), image: img });
-        if(res.ok) { showToast("Item Added to Shop! 🛒"); }
+        
+        if(!name || !price) return alert("Fill details");
+        
+        const res = await api('addItem', { name, type, price:parseInt(price), stat:parseInt(stat), image:img });
+        if(res.ok) { alert("Item Added"); document.getElementById("sName").value = ""; }
     }
-
-    // Init
-    loadUsers();
   </script>
 </body>
 </html>
