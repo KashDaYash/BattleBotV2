@@ -8,7 +8,7 @@ tg?.expand();
 let AUTH = null;
 let activeEnemy = null;
 let playerCurrentHp = 0;
-let battleMode = 'pvm'; // Tracks current mode: 'pvm' or 'pvp'
+let battleMode = 'pvm'; 
 
 // Helper: Get Clean Image Filename
 function getImgPath(imgName) {
@@ -20,7 +20,6 @@ function getImgPath(imgName) {
 window.fixImg = function(imgEl) {
   const filename = imgEl.getAttribute('data-filename');
   if (!filename) return;
-  
   if (imgEl.src.includes("/public/images/")) {
       imgEl.src = `/images/${filename}`;
   } else if (imgEl.src.includes("/images/")) {
@@ -55,7 +54,7 @@ function show(name){
 }
 
 // =========================================
-// 2. AUTH & PROFILE (Round Avatar, Green HP, Backpack)
+// 2. AUTH & PROFILE
 // =========================================
 async function authUser(){
   try {
@@ -91,13 +90,13 @@ async function loadProfile(silent){
       const c = u.character;
       AUTH.user = u; 
       
-      // Update Header Info
       document.getElementById("coinsMini").innerText = u.coins;
+      
+      // ✅ FIX: Username Logic (Hide if empty)
       const userEl = document.getElementById("username");
-      const safeName = u.username ? `@${u.username}` : "No Username";
-      userEl.innerHTML = `<span style="color:#3b82f6; font-weight:600;">${safeName}</span><br><span style="font-size:11px; opacity:0.6;">ID: ${u.telegramId}</span>`;
+      const usernameHtml = u.username ? `<span style="color:#3b82f6; font-weight:600;">@${u.username}</span>` : "";
+      userEl.innerHTML = `${usernameHtml}<br><span style="font-size:11px; opacity:0.6;">ID: ${u.telegramId}</span>`;
 
-      // Stats Calculation
       const filename = getImgPath(c.image);
       const maxHp = 100 + (c.level * 10);
       const hpPercent = Math.min((c.stats.hp / maxHp) * 100, 100);
@@ -108,7 +107,7 @@ async function loadProfile(silent){
           <img src="/public/images/${filename}" 
                data-filename="${filename}"
                onerror="window.fixImg(this)"
-               style="width:70px; height:70px; border-radius:10px; object-fit:cover; border:2px solid #fff; background:#000;">
+               style="width:70px; height:70px; border-radius:50%; object-fit:cover; border:2px solid #fff; background:#000;">
           <div style="flex:1;">
              <div style="font-weight:bold; font-size:16px;">
                 ${c.name} 
@@ -138,7 +137,6 @@ async function loadProfile(silent){
         ${renderBackpack(u.inventory)}
       `;
 
-      // OWNER PANEL BUTTON (ID: 1302298741)
       if (AUTH.user.telegramId === 1302298741) {
           if (!document.getElementById("adminBtn")) {
               const btn = document.createElement("button");
@@ -156,7 +154,6 @@ async function loadProfile(silent){
   } catch(e) { if(!silent) console.error(e); }
 }
 
-// Backpack Renderer
 function renderBackpack(inventory) {
     if (!inventory || inventory.length === 0) {
         return `<div style="padding:15px; text-align:center; background:rgba(0,0,0,0.2); border-radius:10px; font-size:13px; color:#94a3b8;">Empty Backpack</div>`;
@@ -189,32 +186,50 @@ function renderBackpack(inventory) {
     return html;
 }
 
-// Use Potion Action
 async function useItem(itemName) {
     const res = await fetch('/api/shop', {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ telegramId: AUTH.user.telegramId, action: 'use', itemId: itemName })
     });
     const data = await res.json();
-    alert(data.message); // Alert shows result or error (Full HP)
+    alert(data.message);
     if(data.ok) loadProfile(false);
 }
 
-// Daily Reward
-document.getElementById("dailyBtn").onclick = async () => {
+// ✅ FIX: Daily Reward (Ghost Element Fix)
+const dailyBtn = document.getElementById("dailyBtn");
+dailyBtn.onclick = async () => {
   if(!AUTH) await authUser();
+  
+  // Loading State
+  const originalText = dailyBtn.innerText;
+  dailyBtn.disabled = true;
+  dailyBtn.innerText = "Checking...";
+  dailyBtn.style.opacity = "0.7";
+
   try {
       const res = await fetch("/api/daily", {
         method:"POST", headers:{ "Content-Type":"application/json" },
         body: JSON.stringify({ telegramId: AUTH.user.telegramId })
       });
       const data = await res.json();
-      alert(data.ok ? `🎁 Reward: ${data.reward} coins!` : `⏳ ${data.message}`);
-      if(data.ok) loadProfile(false); 
-  } catch(e) { alert("Error: " + e.message); }
+      
+      if(data.ok) {
+          alert(`🎁 Reward: ${data.reward} coins!`);
+          loadProfile(false); 
+      } else {
+          alert(`⏳ ${data.message}`);
+      }
+  } catch(e) { 
+      alert("Error: " + e.message); 
+  } finally {
+      // Reset Button State
+      dailyBtn.disabled = false;
+      dailyBtn.innerText = originalText;
+      dailyBtn.style.opacity = "1";
+  }
 };
 
-// Auto Refresh
 setInterval(() => {
   if(document.getElementById("screen-profile").classList.contains("active")) loadProfile(true); 
 }, 5000);
@@ -226,7 +241,6 @@ setInterval(() => {
 async function loadShop() {
     const shopContainer = document.querySelector("#screen-shop .content-box");
     
-    // Balance Widget
     let balanceHtml = `<div style="text-align:center; padding:12px; background:rgba(245, 158, 11, 0.1); border-radius:10px; margin-bottom:15px; border:1px solid rgba(245, 158, 11, 0.3);">
         <div style="font-size:12px; color:#fbbf24;">Your Balance</div>
         <div style="font-size:20px; font-weight:bold; color:#fff;">💰 ${AUTH?.user?.coins || 0}</div>
@@ -290,7 +304,7 @@ async function buyItem(itemName) {
 }
 
 // =========================================
-// 4. LEADERBOARD SYSTEM
+// 4. LEADERBOARD SYSTEM (Fixed Username)
 // =========================================
 async function loadLeaderboard(filter = 'level') {
     const box = document.querySelector("#screen-leaderboard .content-box");
@@ -322,7 +336,11 @@ async function loadLeaderboard(filter = 'level') {
                  let rankClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : "";
                  let rankIcon = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index+1}`;
                  let bgStyle = index === 0 ? "background:linear-gradient(90deg, rgba(251, 191, 36, 0.1), transparent); border-left:3px solid #facc15;" : "background:rgba(255,255,255,0.03);";
+                 
                  let displayVal = filter === 'coins' ? `${u.coins} 💰` : `Lvl ${u.character?.level || 1}`;
+                 
+                 // ✅ FIX: Hide Username if null
+                 let usernameDisplay = u.username ? `<div style="font-size:11px; opacity:0.5;">@${u.username}</div>` : `<div style="font-size:11px; opacity:0.3;">Unknown</div>`;
 
                  html += `
                  <div style="${bgStyle} padding:12px; border-radius:8px; display:flex; align-items:center; justify-content:space-between;">
@@ -330,7 +348,7 @@ async function loadLeaderboard(filter = 'level') {
                         <span style="font-size:16px; width:25px; font-weight:bold;" class="${rankClass}">${rankIcon}</span>
                         <div>
                             <div style="font-weight:600; font-size:14px;">${u.fullname}</div>
-                            <div style="font-size:11px; opacity:0.5;">@${u.username || 'unknown'}</div>
+                            ${usernameDisplay}
                         </div>
                     </div>
                     <div style="font-weight:bold; color:#facc15; font-size:14px;">${displayVal}</div>
@@ -347,7 +365,6 @@ async function loadLeaderboard(filter = 'level') {
 // 5. BATTLE SYSTEM (PvP & PvM)
 // =========================================
 
-// --- Search Monster (PvM) ---
 async function searchMonster() {
     if(!AUTH) await authUser();
     battleMode = 'pvm';
@@ -361,7 +378,6 @@ async function searchMonster() {
     } catch(e) { alert("Error finding monster"); }
 }
 
-// --- Search Player (PvP) ---
 async function searchPvP() {
     if(!AUTH) await authUser();
     const btn = event.target; 
@@ -387,7 +403,6 @@ async function searchPvP() {
     } catch(e) { alert("Error finding match"); btn.innerText = "PvP Duel"; }
 }
 
-// Unified Preview Setup
 function setupPreview(enemy, isPvP) {
     document.getElementById("arena-select").style.display = "none";
     document.getElementById("arena-preview").style.display = "block";
@@ -395,7 +410,9 @@ function setupPreview(enemy, isPvP) {
 
     document.getElementById("previewTitle").innerText = isPvP ? "🤺 PvP Opponent Found!" : "🦖 Monster Found!";
     document.getElementById("prevName").innerText = enemy.name;
-    document.getElementById("prevInfo").innerText = isPvP ? `@${enemy.username} | Lvl ${enemy.level}` : "Monster";
+    
+    // ✅ FIX: Username in Preview
+    document.getElementById("prevInfo").innerText = isPvP ? (enemy.username ? `@${enemy.username} | Lvl ${enemy.level}` : `Lvl ${enemy.level}`) : "Monster";
     
     const imgEl = document.getElementById("prevImage");
     const fname = getImgPath(enemy.image);
@@ -406,15 +423,12 @@ function setupPreview(enemy, isPvP) {
     document.getElementById("prevHp").innerText = enemy.hp;
     document.getElementById("prevAtk").innerText = enemy.atk;
     
-    // Set Skip Button Action dynamically
     const skipBtn = document.getElementById("skipBtn");
-    // Clone to remove old event listeners
     const newSkip = skipBtn.cloneNode(true);
     skipBtn.parentNode.replaceChild(newSkip, skipBtn);
     newSkip.onclick = isPvP ? searchPvP : searchMonster;
 }
 
-// Start Combat
 function startCombat() {
   if(!activeEnemy) return;
 
@@ -445,7 +459,6 @@ function startCombat() {
   atkBtn.style.opacity = "1";
 }
 
-// Attack Logic
 async function attackTurn() {
   const btn = document.querySelector("#fightControls button.red");
   btn.disabled = true; 
@@ -539,7 +552,6 @@ async function attackTurn() {
   }
 }
 
-// Helpers
 function addLog(msg, type) {
     const logBox = document.getElementById("battleLog");
     const p = document.createElement("div");
@@ -602,5 +614,4 @@ function resetArenaUI() {
 }
 function runAway() { if(confirm("Run away?")) resetArenaUI(); }
 
-// INIT
 show("profile");
