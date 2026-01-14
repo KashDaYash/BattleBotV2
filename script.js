@@ -7,7 +7,7 @@ tg?.expand();
 
 let AUTH = null;
 let activeEnemy = null;
-let playerCurrentHp = 0;
+let playerCurrentHp = 0; // Global Player HP Tracker
 
 // Helper: Get Clean Image Filename
 function getImgPath(imgName) {
@@ -86,6 +86,9 @@ async function loadProfile(silent){
       AUTH.user = u; 
       document.getElementById("coinsMini").innerText = u.coins;
 
+      // Update Global HP Tracker when profile loads
+      playerCurrentHp = c.stats.hp;
+
       const filename = getImgPath(c.image);
       const xpPercent = Math.min((c.xp / c.xpToNext) * 100, 100);
 
@@ -121,7 +124,7 @@ setInterval(() => {
 }, 3000);
 
 // =========================================
-// 4. BATTLE LOGIC (REAL-TIME UPDATES)
+// 4. BATTLE LOGIC (SMOOTH HP BARS)
 // =========================================
 
 document.getElementById("dailyBtn").onclick = async () => {
@@ -195,8 +198,10 @@ function startCombat() {
   document.getElementById("battlePlayerName").innerText = AUTH.user.character.name;
   document.getElementById("battleEnemyName").innerText = activeEnemy.name;
 
-  // Initialize HP
-  playerCurrentHp = AUTH.user.character.stats.hp;
+  // IMPORTANT: Set initial HP for bars
+  playerCurrentHp = AUTH.user.character.stats.hp; 
+  
+  // Set bars to full initially or current state
   updateBars(activeEnemy.hp, activeEnemy.maxHp, playerCurrentHp, AUTH.user.character.stats.hp);
 
   document.getElementById("fightControls").style.display = "flex";
@@ -222,6 +227,10 @@ async function attackTurn() {
   pImg.classList.add("lunge-right");
   setTimeout(() => pImg.classList.remove("lunge-right"), 300);
 
+  // 🔥 IMPORTANT: Capture HP BEFORE API updates it
+  let visualEnemyHp = activeEnemy.hp;
+  let visualPlayerHp = playerCurrentHp;
+
   try {
     const res = await fetch("/api/battle", { 
         method: "POST", 
@@ -235,21 +244,15 @@ async function attackTurn() {
     });
     const data = await res.json();
 
-    // Store old HP for smooth animation effect (Optional visual logic)
-    let currentEnemyHpDisplay = activeEnemy.hp;
-    let currentPlayerHpDisplay = playerCurrentHp;
-
-    // Backend se naya HP set karo
+    // NOTE: Hum data ko save karenge, par display 'visual' variables se karenge
     activeEnemy.hp = data.newEnemyHp;
-    playerCurrentHp = data.newPlayerHp;
+    playerCurrentHp = data.newPlayerHp; // Global tracker update
 
-    // 🔥 LOGIC: Step-by-Step Animation & Log Print
     let delay = 0;
 
     data.log.forEach((l) => {
         setTimeout(() => {
             if(l.type === 'player') {
-                // Update Log
                 addLog(`👊 You hit <b>${l.msg}</b> dmg!`, l.isCrit ? "crit" : "player");
                 spawnDamage(l.msg, 'enemy', l.isCrit, false);
                 
@@ -258,10 +261,12 @@ async function attackTurn() {
                 eImg.classList.add("shake");
                 setTimeout(() => eImg.classList.remove("shake"), 300);
 
-                // Update Enemy Bar Instantly
-                currentEnemyHpDisplay -= parseInt(l.msg);
-                if(currentEnemyHpDisplay < 0) currentEnemyHpDisplay = 0;
-                updateBars(currentEnemyHpDisplay, activeEnemy.maxHp, playerCurrentHp, AUTH.user.character.stats.hp);
+                // 🔥 LOGIC FIX: Subtract from VISUAL variable
+                let dmg = parseInt(l.msg);
+                visualEnemyHp -= dmg; 
+                if(visualEnemyHp < 0) visualEnemyHp = 0;
+                
+                updateBars(visualEnemyHp, activeEnemy.maxHp, visualPlayerHp, AUTH.user.character.stats.hp);
             } 
             else if (l.type === 'enemy-miss') {
                  addLog(`💨 You dodged the attack!`, "dodge");
@@ -272,7 +277,6 @@ async function attackTurn() {
                  spawnDamage("LEVEL UP!", 'player', true, false); 
             }
             else {
-                // Update Log
                 addLog(`💔 Enemy hit <b>${l.msg}</b> dmg!`, "enemy");
                 spawnDamage(l.msg, 'player', false, false);
 
@@ -280,24 +284,29 @@ async function attackTurn() {
                 pImg.classList.add("shake");
                 setTimeout(() => pImg.classList.remove("shake"), 300);
 
-                 // Update Player Bar Instantly (Wait a bit for enemy turn)
-                 updateBars(activeEnemy.hp, activeEnemy.maxHp, playerCurrentHp, AUTH.user.character.stats.hp);
+                 // 🔥 LOGIC FIX: Subtract from VISUAL variable
+                 let dmg = parseInt(l.msg);
+                 visualPlayerHp -= dmg;
+                 if(visualPlayerHp < 0) visualPlayerHp = 0;
+
+                 updateBars(visualEnemyHp, activeEnemy.maxHp, visualPlayerHp, AUTH.user.character.stats.hp);
             }
         }, delay);
         
-        delay += 800; // Har action ke beech 800ms ka gap
+        delay += 800; // 800ms gap for each action
     });
 
-    // Final Result Check
+    // End Logic
     setTimeout(() => {
+        // Ensure final state matches backend exactly
+        updateBars(data.newEnemyHp, activeEnemy.maxHp, data.newPlayerHp, AUTH.user.character.stats.hp);
+
         if(data.win) { 
             addLog(`🏆 <b>VICTORY!</b> +${activeEnemy.coins} Coins`, "win");
-            updateBars(0, activeEnemy.maxHp, playerCurrentHp, AUTH.user.character.stats.hp); // Ensure 0 HP visual
             endFight(true); 
         }
         else if(data.playerDied) { 
             addLog(`☠️ <b>DEFEAT...</b> You fainted.`, "lose");
-            updateBars(activeEnemy.hp, activeEnemy.maxHp, 0, AUTH.user.character.stats.hp); // Ensure 0 HP visual
             endFight(false); 
         }
         
@@ -314,22 +323,21 @@ async function attackTurn() {
   }
 }
 
-// 🔥 NEW: Add Realtime Log Function
+// Log Function
 function addLog(msg, type) {
     const logBox = document.getElementById("battleLog");
     const p = document.createElement("div");
     p.innerHTML = msg;
     p.style.marginBottom = "4px";
     
-    // Colors based on type
-    if(type === 'player') p.style.color = "#3498db"; // Blue
-    if(type === 'crit') p.style.color = "#f1c40f"; // Gold
-    if(type === 'enemy') p.style.color = "#e74c3c"; // Red
-    if(type === 'dodge') p.style.color = "#1abc9c"; // Teal
-    if(type === 'win') p.style.color = "#2ecc71"; // Green
-    if(type === 'lose') p.style.color = "#95a5a6"; // Grey
+    if(type === 'player') p.style.color = "#3498db";
+    if(type === 'crit') p.style.color = "#f1c40f";
+    if(type === 'enemy') p.style.color = "#e74c3c";
+    if(type === 'dodge') p.style.color = "#1abc9c";
+    if(type === 'win') p.style.color = "#2ecc71";
+    if(type === 'lose') p.style.color = "#95a5a6";
     
-    logBox.prepend(p); // Add new log to TOP
+    logBox.prepend(p);
 }
 
 function spawnDamage(val, target, isCrit, isDodge) {
@@ -356,13 +364,15 @@ function spawnDamage(val, target, isCrit, isDodge) {
 }
 
 function updateBars(e, eM, p, pM) { 
-    // Calculate Percentage
+    // Calculate percentage based on CURRENT / MAX
     let ePer = (e / eM) * 100;
     let pPer = (p / pM) * 100;
 
-    // Limit between 0 and 100
+    // Safety clamps
     if(ePer < 0) ePer = 0;
     if(pPer < 0) pPer = 0;
+    if(ePer > 100) ePer = 100;
+    if(pPer > 100) pPer = 100;
 
     document.getElementById("battleEnemyBar").style.width = ePer + "%"; 
     document.getElementById("battlePlayerBar").style.width = pPer + "%"; 
