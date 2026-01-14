@@ -7,40 +7,49 @@
   <style>
     body { background: #111; color: white; font-family: sans-serif; padding: 20px; }
     .card { background: #222; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #333; }
-    input, button { padding: 8px; margin: 5px 0; width: 100%; box-sizing: border-box; }
-    button { cursor: pointer; background: #2ecc71; border: none; color: white; font-weight: bold; }
-    .red { background: #e74c3c; }
+    input, button { padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; border-radius: 5px; border: none; }
+    button { cursor: pointer; background: #2ecc71; color: white; font-weight: bold; font-size: 14px; }
+    button:hover { opacity: 0.9; }
+    
+    .red { background: #c0392b; } /* Dark Red */
+    .yellow { background: #f39c12; } /* Orange/Yellow */
+    .blue { background: #3498db; }
+    
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { border: 1px solid #444; padding: 8px; text-align: left; font-size: 12px; }
+    tr:nth-child(even) { background-color: #2a2a2a; }
   </style>
 </head>
 <body>
 
-  <h1>👮‍♂️ Admin Panel</h1>
+  <h1>👮‍♂️ Admin Panel (Owner Only)</h1>
   
   <div class="card">
-    <h3>📊 Game Stats</h3>
-    <p>Total Players: <b id="totalUsers">Loading...</b></p>
+    <h3>📊 Live Stats</h3>
+    <p>Total Players: <b id="totalUsers" style="color:#2ecc71">Loading...</b></p>
   </div>
 
   <div class="card">
-    <h3>🛠️ Manage User</h3>
-    <input type="text" id="targetId" placeholder="Enter Telegram ID">
-    <input type="number" id="amount" placeholder="Amount (Coins/XP)">
+    <h3>🛠️ User Controls</h3>
+    <input type="text" id="targetId" placeholder="Enter Telegram ID (e.g. 123456789)">
+    <input type="number" id="amount" placeholder="Amount (for Coins/XP)">
     
     <div style="display:flex; gap:5px;">
-      <button onclick="updateUser('coins')">💰 Add Coins</button>
-      <button onclick="updateUser('xp')">✨ Add XP</button>
+      <button class="blue" onclick="updateUser('coins')">💰 Add Coins</button>
+      <button class="blue" onclick="updateUser('xp')">✨ Add XP</button>
     </div>
+    
     <div style="display:flex; gap:5px; margin-top:5px;">
-        <button class="red" onclick="banUser()">🚫 BAN USER</button>
-        <button onclick="getUser()">🔍 Search User</button>
+        <button class="yellow" onclick="resetUser()">⚠️ RESET DATA</button>
+        <button class="red" onclick="deleteUser()">🗑️ DELETE ACCOUNT</button>
     </div>
+    
+    <button onclick="getUser()" style="margin-top:5px; background:#555;">🔍 Search User Details</button>
   </div>
 
   <div class="card">
-    <h3>👥 Recent Players</h3>
-    <button onclick="loadUsers()">🔄 Refresh List</button>
+    <h3>👥 Recent Players (Last 10)</h3>
+    <button onclick="loadUsers()" style="background:#8e44ad;">🔄 Refresh List</button>
     <table id="userTable">
       <thead><tr><th>ID</th><th>Name</th><th>Lvl</th><th>Coins</th></tr></thead>
       <tbody id="userList"></tbody>
@@ -48,29 +57,35 @@
   </div>
 
   <script>
-    // Aapki ID hardcoded security ke liye
     const ADMIN_ID = 1302298741; 
 
     async function apiCall(action, payload = {}) {
-      const res = await fetch('/api/admin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminId: ADMIN_ID, action, ...payload })
-      });
-      return await res.json();
+      try {
+        const res = await fetch('/api/admin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ adminId: ADMIN_ID, action, ...payload })
+        });
+        return await res.json();
+      } catch(e) {
+        alert("API Error: " + e.message);
+        return { ok: false };
+      }
     }
 
+    // 1. Load Stats
     async function loadStats() {
       const data = await apiCall('getStats');
       if(data.ok) document.getElementById('totalUsers').innerText = data.totalUsers;
     }
 
+    // 2. Load User List
     async function loadUsers() {
       const data = await apiCall('getUsers');
       if(data.ok) {
         const list = document.getElementById('userList');
         list.innerHTML = data.users.map(u => `
-          <tr onclick="document.getElementById('targetId').value='${u.telegramId}'">
+          <tr onclick="document.getElementById('targetId').value='${u.telegramId}'" style="cursor:pointer">
             <td>${u.telegramId}</td>
             <td>${u.fullname}</td>
             <td>${u.character.level}</td>
@@ -79,31 +94,54 @@
       }
     }
 
+    // 3. Update Coins/XP
     async function updateUser(type) {
         const id = document.getElementById('targetId').value;
         const amt = document.getElementById('amount').value;
-        if(!id || !amt) return alert("ID aur Amount daalo!");
+        if(!id || !amt) return alert("ID aur Amount dono daalo!");
         
         const res = await apiCall('updateUser', { targetId: id, type, amount: parseInt(amt) });
+        if(res.ok) { alert(res.message); loadUsers(); }
+        else alert(res.message);
+    }
+
+    // 4. Reset User (Level 1)
+    async function resetUser() {
+        const id = document.getElementById('targetId').value;
+        if(!id) return alert("User ID daalo!");
+        if(!confirm(`⚠️ WARNING: Are you sure you want to RESET progress for ID: ${id}? (Level 1 ho jayega)`)) return;
+        
+        const res = await apiCall('resetUser', { targetId: id });
         alert(res.message);
         loadUsers();
     }
 
-    async function banUser() {
+    // 5. 🔥 DELETE USER PERMANENTLY
+    async function deleteUser() {
         const id = document.getElementById('targetId').value;
-        if(!confirm(`Are you sure you want to BAN ${id}?`)) return;
-        const res = await apiCall('banUser', { targetId: id });
+        if(!id) return alert("Pehle User ID daalo jise delete karna hai!");
+        
+        // Double Confirmation for safety
+        if(!confirm(`🚫 DANGER: Kya aap sach mein ID: ${id} ko DELETE karna chahte hain?`)) return;
+        if(!confirm(`‼️ Yeh wapas nahi aayega! Pakka delete kar doon?`)) return;
+
+        const res = await apiCall('deleteUser', { targetId: id });
         alert(res.message);
+        document.getElementById('targetId').value = ""; // Clear Input
+        loadUsers(); // List update karo
+        loadStats(); // Count update karo
     }
 
+    // 6. Search Info
     async function getUser() {
         const id = document.getElementById('targetId').value;
+        if(!id) return alert("ID to daalo!");
         const res = await apiCall('findUser', { targetId: id });
         if(res.ok) alert(JSON.stringify(res.user, null, 2));
-        else alert("User not found");
+        else alert("User nahi mila!");
     }
 
-    // Initial Load
+    // Initial Calls
     loadStats();
     loadUsers();
   </script>
