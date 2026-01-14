@@ -17,12 +17,10 @@ function getImgPath(imgName) {
 window.fixImg = function(imgEl) {
   const filename = imgEl.getAttribute('data-filename');
   if (!filename) return;
-  // Try public first, then images
   if (imgEl.src.includes("/public/images/")) {
       imgEl.src = `/images/${filename}`;
   } else if (imgEl.src.includes("/images/")) {
       imgEl.onerror = null; 
-      // Shop items ke liye specific placeholder
       imgEl.src = "https://placehold.co/100x100/333/fff?text=Item"; 
   }
 };
@@ -38,18 +36,17 @@ document.querySelectorAll("nav button").forEach(btn => {
   btn.onclick = () => show(btn.dataset.go);
 });
 
-// 🔥 SHOW FUNCTION UPDATED FOR SHOP & LEADERBOARD
 function show(name){
   Object.values(screens).forEach(s => s.classList.remove("active"));
   screens[name].classList.add("active");
   if(name === "profile") loadProfile(false);
   if(name === "arena") resetArenaUI();
   if(name === "shop") loadShop(); 
-  if(name === "leaderboard") loadLeaderboard(); // 🔥 New
+  if(name === "leaderboard") loadLeaderboard('level'); // Default sort by level
 }
 
 // =========================================
-// 2. AUTH & PROFILE
+// 2. AUTH & PROFILE (FIXED USERNAME DISPLAY)
 // =========================================
 async function authUser(){
   try {
@@ -65,6 +62,8 @@ async function authUser(){
 
 async function loadProfile(silent){
   const tgUser = tg?.initDataUnsafe?.user || {};
+  
+  // Basic display while loading
   if(tgUser.id && !silent) {
      document.getElementById("name").innerText = tgUser.first_name;
      document.getElementById("avatar").src = tgUser.photo_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${tgUser.id}`;
@@ -87,9 +86,18 @@ async function loadProfile(silent){
       document.getElementById("coinsMini").innerText = u.coins;
       playerCurrentHp = c.stats.hp; 
 
-      const safeUsername = u.username ? `@${u.username}` : "No Username";
-      document.getElementById("username").innerHTML = `${safeUsername} <br> <span style="font-size:11px; opacity:0.6; font-weight:normal;">ID: ${u.telegramId}</span>`;
+      // ✅ FIX: Username & ID Display
+      // Hum direct element ko target karke innerHTML inject kar rahe hain
+      const userEl = document.getElementById("username");
+      const safeName = u.username ? `@${u.username}` : "No Username";
+      
+      userEl.innerHTML = `
+        <span style="color:#3498db; font-weight:bold;">${safeName}</span><br>
+        <span style="font-size:11px; opacity:0.6; color:#ccc;">ID: ${u.telegramId}</span>
+      `;
+      userEl.style.lineHeight = "1.4"; // Thoda gap taki saaf dikhe
 
+      // Character Box
       const filename = getImgPath(c.image);
       const xpPercent = Math.min((c.xp / c.xpToNext) * 100, 100);
 
@@ -117,7 +125,7 @@ async function loadProfile(silent){
         </div>
       `;
 
-      // Admin Button
+      // Admin Button (Owner Only)
       if (AUTH.user.telegramId === 1302298741) {
           if (!document.getElementById("adminBtn")) {
               const btn = document.createElement("button");
@@ -214,17 +222,32 @@ async function buyItem(itemName) {
 }
 
 // =========================================
-// 4. LEADERBOARD SYSTEM (NEW)
+// 4. LEADERBOARD SYSTEM (WITH FILTERS)
 // =========================================
-async function loadLeaderboard() {
+async function loadLeaderboard(filter = 'level') {
     const box = document.querySelector("#screen-leaderboard .content-box");
-    box.innerHTML = "<h3>🏆 Leaderboard Loading...</h3>";
+    // Show Loading
+    box.innerHTML = `<h3>🏆 Leaderboard</h3><p>Loading...</p>`;
 
     try {
-        const res = await fetch('/api/leaderboard');
+        const res = await fetch('/api/leaderboard', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ filter: filter })
+        });
         const data = await res.json();
 
-        let html = `<h3>🏆 Top Players</h3>`;
+        // 🔥 FILTER BUTTONS UI
+        let btnLevelStyle = filter === 'level' ? 'background:#f1c40f; color:#000;' : 'background:#444; color:#fff;';
+        let btnCoinStyle = filter === 'coins' ? 'background:#f1c40f; color:#000;' : 'background:#444; color:#fff;';
+
+        let html = `
+            <h3>🏆 Leaderboard</h3>
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <button onclick="loadLeaderboard('level')" style="flex:1; padding:8px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; ${btnLevelStyle}">⚡ Top Levels</button>
+                <button onclick="loadLeaderboard('coins')" style="flex:1; padding:8px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; ${btnCoinStyle}">💰 Top Richest</button>
+            </div>
+        `;
         
         if(data.leaderboard.length === 0) {
              html += "<p>No players yet.</p>";
@@ -233,6 +256,9 @@ async function loadLeaderboard() {
              data.leaderboard.forEach((u, index) => {
                  let rankEmoji = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index+1}`;
                  let style = index === 0 ? "background:linear-gradient(45deg, #f1c40f33, transparent); border:1px solid #f1c40f;" : "background:rgba(255,255,255,0.05);";
+                 
+                 // Show highlight value based on filter
+                 let highlightVal = filter === 'coins' ? `${u.coins} 💰` : `Lvl ${u.character?.level || 1}`;
 
                  html += `
                  <div style="${style} padding:10px; border-radius:8px; display:flex; align-items:center; justify-content:space-between;">
@@ -240,10 +266,10 @@ async function loadLeaderboard() {
                         <span style="font-size:18px; width:30px;">${rankEmoji}</span>
                         <div>
                             <div style="font-weight:bold;">${u.fullname}</div>
-                            <div style="font-size:11px; opacity:0.6;">Lvl ${u.character?.level || 1}</div>
+                            <div style="font-size:11px; opacity:0.6;">@${u.username || 'unknown'}</div>
                         </div>
                     </div>
-                    <div style="font-weight:bold; color:#f1c40f;">${u.coins} 💰</div>
+                    <div style="font-weight:bold; color:#f1c40f;">${highlightVal}</div>
                  </div>`;
              });
              html += `</div>`;
