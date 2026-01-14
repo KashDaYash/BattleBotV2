@@ -3,153 +3,312 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BattleBot DB Admin</title>
+  <title>BattleBot Pro Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    body { background: #0f172a; color: #cbd5e1; font-family: 'Segoe UI', sans-serif; padding: 20px; margin: 0; }
-    
-    /* Layout */
-    .container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1200px; margin: 0 auto; }
-    .full-width { grid-column: span 2; }
-    
-    /* Cards */
-    .card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-    h2 { margin-top: 0; color: #fff; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; font-size: 18px; }
+    /* --- CSS VARIABLES & RESET --- */
+    :root {
+      --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --text-muted: #94a3b8;
+      --primary: #3b82f6; --success: #22c55e; --danger: #ef4444; --warning: #f59e0b;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 20px; }
 
-    /* Forms */
-    input, select, button { width: 100%; padding: 10px; margin: 5px 0; background: #0f172a; border: 1px solid #475569; color: white; border-radius: 5px; }
-    button { cursor: pointer; font-weight: bold; transition: 0.2s; border: none; }
-    .btn-green { background: #22c55e; color: #000; }
-    .btn-blue { background: #3b82f6; color: #fff; }
-    .btn-red { background: #ef4444; color: #fff; width: auto; padding: 5px 10px; font-size: 12px; }
+    /* --- LAYOUT --- */
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid var(--border); }
+    .grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; max-width: 1400px; margin: 0 auto; }
+    
+    /* --- CARDS --- */
+    .card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .card h2 { font-size: 18px; margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+
+    /* --- FORMS & INPUTS --- */
+    .form-group { margin-bottom: 12px; }
+    label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 5px; }
+    input, select { width: 100%; padding: 10px; background: #020617; border: 1px solid var(--border); color: white; border-radius: 6px; outline: none; transition: 0.2s; }
+    input:focus { border-color: var(--primary); }
+    
+    /* --- BUTTONS --- */
+    button { cursor: pointer; padding: 10px 16px; border-radius: 6px; border: none; font-weight: 600; transition: 0.2s; }
     button:hover { opacity: 0.9; transform: translateY(-1px); }
-
-    /* Database Table Style */
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { background: #334155; color: #fff; padding: 10px; text-align: left; }
-    td { border-bottom: 1px solid #334155; padding: 8px; }
-    tr:hover { background: #263345; }
+    .btn-primary { background: var(--primary); color: white; width: 100%; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; width: auto; }
+    .btn-view { background: var(--border); color: white; }
     
-    .badge { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; }
-    .b-user { background: #3b82f6; color: white; }
+    /* --- TABLE --- */
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; color: var(--text-muted); padding: 12px; border-bottom: 1px solid var(--border); font-weight: 600; }
+    td { padding: 12px; border-bottom: 1px solid var(--border); }
+    tr:hover { background: rgba(255,255,255,0.02); }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; background: var(--border); }
+    
+    /* --- MODAL (POPUP) --- */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: none; justify-content: center; align-items: center; z-index: 100; }
+    .modal { background: var(--card); width: 90%; max-width: 500px; padding: 25px; border-radius: 12px; border: 1px solid var(--border); position: relative; animation: slideUp 0.3s ease; }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .close-modal { position: absolute; top: 15px; right: 15px; background: none; color: var(--text-muted); font-size: 20px; }
+    
+    .user-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border); }
+    .user-avatar { width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--primary); }
+    
+    .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+    
+    /* --- TOAST --- */
+    .toast { position: fixed; bottom: 20px; right: 20px; background: var(--card); padding: 12px 20px; border-radius: 8px; border-left: 4px solid var(--primary); box-shadow: 0 5px 15px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 10px; transform: translateX(120%); transition: 0.3s; z-index: 200; }
+    .toast.show { transform: translateX(0); }
+    .toast.success { border-color: var(--success); }
+    .toast.error { border-color: var(--danger); }
+
   </style>
 </head>
 <body>
 
-  <h1 style="text-align:center; color:#3b82f6;">🛠️ OWNER DASHBOARD</h1>
+  <div class="header">
+    <h1>🛡️ Control Center</h1>
+    <div>
+        <span style="color:var(--text-muted); font-size:14px; margin-right:10px;">Total Players: <b id="totalStats" style="color:white">...</b></span>
+        <button class="btn-sm btn-primary" onclick="loadUsers()">🔄 Refresh</button>
+    </div>
+  </div>
 
-  <div class="container">
+  <div class="grid">
     
     <div class="card">
-      <h2>🛒 Add Shop Item</h2>
-      <input type="text" id="itemName" placeholder="Item Name (e.g. Fire Sword)">
-      <select id="itemType">
-        <option value="weapon">⚔️ Weapon (Attack)</option>
-        <option value="armor">🛡️ Armor (Defense)</option>
-        <option value="potion">🧪 Potion (Consumable)</option>
-        <option value="pet">🐾 Pet (Passive)</option>
-      </select>
-      <input type="number" id="itemPrice" placeholder="Price (Coins)">
-      <input type="number" id="itemStat" placeholder="Stat Value (Atk/Def/Heal)">
-      <input type="text" id="itemImg" placeholder="Image Filename (e.g. sword.png)">
-      <button class="btn-green" onclick="addItem()">➕ Add to Shop DB</button>
+      <h2>🛍️ Add Shop Item</h2>
+      <div class="form-group">
+        <label>Item Name</label>
+        <input type="text" id="sName" placeholder="Ex: Dragon Sword">
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="sType">
+            <option value="weapon">⚔️ Weapon (Attack)</option>
+            <option value="armor">🛡️ Armor (Defense)</option>
+            <option value="potion">🧪 Potion (Heal/Buff)</option>
+            <option value="pet">🐾 Pet (Passive)</option>
+        </select>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+          <div class="form-group">
+            <label>Price (Coins)</label>
+            <input type="number" id="sPrice" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label>Stat Value (+)</label>
+            <input type="number" id="sStat" placeholder="0">
+          </div>
+      </div>
+      <div class="form-group">
+        <label>Image Filename</label>
+        <input type="text" id="sImg" placeholder="Ex: sword.png">
+      </div>
+      <button class="btn-primary" onclick="addItem()">➕ Add Item to Database</button>
     </div>
 
     <div class="card">
-      <h2>⚡ Quick Actions</h2>
-      <input type="text" id="targetId" placeholder="Target User ID">
-      <div style="display:flex; gap:10px;">
-        <button class="btn-blue" onclick="sendGift()">🎁 Send 500 Coins</button>
-        <button class="btn-red" style="width:100%; font-size:14px;" onclick="banUser()">🚫 BAN USER</button>
+      <h2>👥 Player Database</h2>
+      <div class="form-group">
+        <input type="text" id="searchBox" placeholder="🔍 Search by Name, ID or Username..." onkeyup="filterUsers()">
       </div>
-      <p style="font-size:12px; opacity:0.6; margin-top:10px;">Total Players: <b id="totalCount">...</b></p>
-    </div>
-
-    <div class="card full-width">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h2>👥 User Database</h2>
-        <button onclick="loadUsers()" style="width:auto; background:#475569;">🔄 Refresh</button>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Level</th>
+              <th>Coins</th>
+              <th style="text-align:right;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="userTable">
+            <tr><td colspan="4" style="text-align:center; padding:20px;">Loading...</td></tr>
+          </tbody>
+        </table>
       </div>
-      
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Lvl</th>
-            <th>Coins</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="userTable">
-          <tr><td colspan="5">Loading data...</td></tr>
-        </tbody>
-      </table>
     </div>
+  </div>
 
+  <div class="modal-overlay" id="userModal">
+    <div class="modal">
+        <button class="close-modal" onclick="closeModal()">×</button>
+        
+        <div class="user-header">
+            <img src="" id="mAvatar" class="user-avatar">
+            <div>
+                <h3 id="mName">User Name</h3>
+                <p id="mId" style="color:var(--text-muted); font-size:12px; margin-top:2px;">ID: 12345</p>
+            </div>
+            <button onclick="copyId()" class="btn-sm" style="margin-left:auto; background:var(--bg);">📋 Copy ID</button>
+        </div>
+
+        <label>💰 Give Resources (Enter Custom Amount)</label>
+        <div style="display:flex; gap:10px; margin-bottom:15px;">
+            <input type="number" id="mAmount" placeholder="Amount (e.g. 1000)" style="flex:1">
+            <button onclick="updateUser('coins')" class="btn-sm" style="background:var(--warning); color:black;">Add Coins</button>
+            <button onclick="updateUser('xp')" class="btn-sm" style="background:#8b5cf6; color:white;">Add XP</button>
+        </div>
+
+        <label style="color:var(--danger)">🚫 Danger Zone</label>
+        <div class="action-grid">
+            <select id="banDuration">
+                <option value="permanent">Permanent Ban</option>
+                <option value="1">1 Day Ban</option>
+                <option value="3">3 Days Ban</option>
+                <option value="7">7 Days Ban</option>
+            </select>
+            <button onclick="banUser()" style="background:var(--danger); color:white;">🔨 Ban User</button>
+            
+            <button onclick="resetUser()" style="background:var(--warning); color:black;">⚠️ Reset Account</button>
+            <button onclick="deleteUser()" style="background:#991b1b; color:white;">🗑️ Delete Permanent</button>
+        </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">
+    <span id="toastIcon">✅</span>
+    <span id="toastMsg">Success!</span>
   </div>
 
   <script>
     const ADMIN_ID = 1302298741;
+    let currentUsers = [];
+    let selectedUser = null;
 
-    async function api(action, data={}) {
-      const res = await fetch('/api/admin', {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ adminId: ADMIN_ID, action, ...data })
-      });
-      return await res.json();
+    // --- UTILS ---
+    function showToast(msg, type='success') {
+        const t = document.getElementById('toast');
+        const icon = document.getElementById('toastIcon');
+        t.className = `toast show ${type}`;
+        t.querySelector('#toastMsg').innerText = msg;
+        icon.innerText = type === 'success' ? '✅' : '⚠️';
+        setTimeout(() => t.classList.remove('show'), 3000);
     }
 
-    // 1. Load Users Table
+    async function api(action, payload={}) {
+        try {
+            const res = await fetch('/api/admin', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ adminId: ADMIN_ID, action, ...payload })
+            });
+            return await res.json();
+        } catch(e) {
+            showToast("Server Error", "error");
+            return { ok: false };
+        }
+    }
+
+    // --- LOAD DATA ---
     async function loadUsers() {
-      const data = await api('getUsers');
-      if(data.ok) {
-        document.getElementById("totalCount").innerText = data.users.length;
-        const rows = data.users.map(u => `
-          <tr>
-            <td><span class="badge b-user">${u.telegramId}</span></td>
-            <td>${u.fullname} <br> <small style="opacity:0.5">@${u.username}</small></td>
-            <td>Lvl ${u.character.level}</td>
-            <td style="color:#fbbf24; font-weight:bold;">${u.coins} 💰</td>
-            <td>
-               <button class="btn-red" onclick="copyId('${u.telegramId}')">Copy ID</button>
-            </td>
-          </tr>
+        const data = await api('getUsers');
+        if(data.ok) {
+            currentUsers = data.users;
+            document.getElementById("totalStats").innerText = currentUsers.length;
+            renderTable(currentUsers);
+        }
+    }
+
+    function renderTable(users) {
+        const tbody = document.getElementById("userTable");
+        if(users.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No users found.</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = users.map(u => `
+            <tr>
+                <td>
+                    <div style="font-weight:600;">${u.fullname}</div>
+                    <div style="font-size:11px; color:#64748b;">@${u.username || 'none'}</div>
+                </td>
+                <td><span class="badge">Lvl ${u.character.level}</span></td>
+                <td style="color:var(--warning); font-weight:bold;">${u.coins}</td>
+                <td style="text-align:right;">
+                    <button class="btn-sm btn-view" onclick='openUserModal(${JSON.stringify(u)})'>👁️ View</button>
+                </td>
+            </tr>
         `).join('');
-        document.getElementById("userTable").innerHTML = rows;
-      }
     }
 
-    // 2. Add Shop Item
-    async function addItem() {
-      const name = document.getElementById("itemName").value;
-      const type = document.getElementById("itemType").value;
-      const price = document.getElementById("itemPrice").value;
-      const stat = document.getElementById("itemStat").value;
-      const img = document.getElementById("itemImg").value;
-
-      if(!name || !price) return alert("Details bharo!");
-
-      const res = await api('addItem', { name, type, price: parseInt(price), stat: parseInt(stat), image: img });
-      alert(res.message);
+    // --- SEARCH ---
+    function filterUsers() {
+        const term = document.getElementById("searchBox").value.toLowerCase();
+        const filtered = currentUsers.filter(u => 
+            u.fullname.toLowerCase().includes(term) || 
+            (u.username && u.username.toLowerCase().includes(term)) ||
+            String(u.telegramId).includes(term)
+        );
+        renderTable(filtered);
     }
 
-    // Helpers
-    async function sendGift() {
-       const id = document.getElementById("targetId").value;
-       const res = await api('updateUser', { targetId: id, type: 'coins', amount: 500 });
-       alert(res.message); loadUsers();
+    // --- MODAL LOGIC ---
+    function openUserModal(user) {
+        selectedUser = user;
+        document.getElementById("mName").innerText = user.fullname;
+        document.getElementById("mId").innerText = "ID: " + user.telegramId;
+        document.getElementById("mAvatar").src = `/public/images/${user.character.image}` || "https://placehold.co/100"; 
+        
+        // Reset Inputs
+        document.getElementById("mAmount").value = "";
+        
+        // Show Modal
+        document.getElementById("userModal").style.display = 'flex';
     }
+
+    function closeModal() {
+        document.getElementById("userModal").style.display = 'none';
+        selectedUser = null;
+    }
+
+    function copyId() {
+        if(!selectedUser) return;
+        navigator.clipboard.writeText(selectedUser.telegramId);
+        showToast("ID Copied!");
+    }
+
+    // --- ACTIONS ---
+    async function updateUser(type) {
+        const amt = document.getElementById("mAmount").value;
+        if(!amt) return showToast("Enter an amount first!", "error");
+        
+        const res = await api('updateUser', { targetId: selectedUser.telegramId, type, amount: parseInt(amt) });
+        if(res.ok) { showToast(`Added ${amt} ${type}`); loadUsers(); }
+    }
+
     async function banUser() {
-       const id = document.getElementById("targetId").value;
-       if(confirm("Delete this user?")) {
-         await api('deleteUser', { targetId: id });
-         loadUsers();
-       }
-    }
-    function copyId(id) {
-       document.getElementById("targetId").value = id;
+        const duration = document.getElementById("banDuration").value;
+        if(!confirm("Are you sure you want to BAN this user?")) return;
+        
+        const res = await api('banUser', { targetId: selectedUser.telegramId, duration });
+        if(res.ok) { showToast("User Banned 🔨"); closeModal(); loadUsers(); }
     }
 
+    async function resetUser() {
+        if(!confirm("RESET this user to Level 1?")) return;
+        const res = await api('resetUser', { targetId: selectedUser.telegramId });
+        if(res.ok) { showToast("User Reset 🔄"); loadUsers(); }
+    }
+
+    async function deleteUser() {
+        if(!confirm("DELETE this account permanently? Irreversible!")) return;
+        const res = await api('deleteUser', { targetId: selectedUser.telegramId });
+        if(res.ok) { showToast("User Deleted 🗑️"); closeModal(); loadUsers(); }
+    }
+
+    // --- SHOP ACTIONS ---
+    async function addItem() {
+        const name = document.getElementById("sName").value;
+        const type = document.getElementById("sType").value;
+        const price = document.getElementById("sPrice").value;
+        const stat = document.getElementById("sStat").value;
+        const img = document.getElementById("sImg").value;
+
+        if(!name || !price || !stat || !img) return showToast("All fields are required!", "error");
+
+        const res = await api('addItem', { name, type, price: parseInt(price), stat: parseInt(stat), image: img });
+        if(res.ok) { showToast("Item Added to Shop! 🛒"); }
+    }
+
+    // Init
     loadUsers();
   </script>
 </body>
