@@ -369,3 +369,83 @@ function resetArenaUI() {
 }
 function runAway() { if(confirm("Run away?")) resetArenaUI(); }
 show("profile");
+
+// ... Upar ka code same ...
+
+// =========================================
+// SHOP LOGIC
+// =========================================
+
+// Is function ko purane `show` function ke andar connect karna mat bhulna!
+// Jab show('shop') call ho, tab ye function chale:
+
+async function loadShop() {
+    const shopContainer = document.querySelector("#screen-shop .content-box");
+    shopContainer.innerHTML = "Loading Items...";
+
+    if(!AUTH) await authUser();
+
+    try {
+        const res = await fetch('/api/shop', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ telegramId: AUTH.user.telegramId, action: 'getShop' })
+        });
+        const data = await res.json();
+
+        if (data.items.length === 0) {
+            shopContainer.innerHTML = "<p>Shop is empty. Ask Admin to add items!</p>";
+            return;
+        }
+
+        // Render Items
+        shopContainer.innerHTML = `<h3>🛒 Equipment & Potions</h3>`;
+        
+        data.items.forEach(item => {
+            const card = document.createElement("div");
+            card.style.cssText = "background:rgba(255,255,255,0.05); padding:10px; margin-bottom:10px; border-radius:8px; display:flex; align-items:center; gap:10px;";
+            
+            // Icon based on type
+            let icon = "❓";
+            if(item.type === 'weapon') icon = "⚔️";
+            if(item.type === 'armor') icon = "🛡️";
+            if(item.type === 'potion') icon = "🧪";
+
+            card.innerHTML = `
+                <div style="font-size:24px;">${icon}</div>
+                <div style="flex:1;">
+                    <div style="font-weight:bold;">${item.name}</div>
+                    <div style="font-size:12px; opacity:0.7;">+${item.stat} ${item.type.toUpperCase()}</div>
+                </div>
+                <button onclick="buyItem('${item.name}')" class="action-btn" style="width:auto; padding:5px 15px; font-size:12px; background:#f1c40f; color:#000;">
+                    ${item.price} 💰
+                </button>
+            `;
+            shopContainer.appendChild(card);
+        });
+
+    } catch (e) {
+        shopContainer.innerHTML = "Error loading shop.";
+    }
+}
+
+async function buyItem(itemName) {
+    if(!confirm(`Buy ${itemName}?`)) return;
+
+    const res = await fetch('/api/shop', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ telegramId: AUTH.user.telegramId, action: 'buy', itemId: itemName })
+    });
+    const data = await res.json();
+    alert(data.message);
+    if(data.ok) loadProfile(false); // Update Coins display
+}
+
+// ⚠️ IMPORTANT: Update the `show` function at the top of script.js
+function show(name){
+  Object.values(screens).forEach(s => s.classList.remove("active"));
+  screens[name].classList.add("active");
+  if(name === "profile") loadProfile(false);
+  if(name === "arena") resetArenaUI();
+  if(name === "shop") loadShop(); // 🔥 ADD THIS LINE
+}
+
