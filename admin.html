@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BattleBot Admin</title>
+  <style>
+    body { background: #111; color: white; font-family: sans-serif; padding: 20px; }
+    .card { background: #222; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #333; }
+    input, button { padding: 8px; margin: 5px 0; width: 100%; box-sizing: border-box; }
+    button { cursor: pointer; background: #2ecc71; border: none; color: white; font-weight: bold; }
+    .red { background: #e74c3c; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #444; padding: 8px; text-align: left; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+  <h1>👮‍♂️ Admin Panel</h1>
+  
+  <div class="card">
+    <h3>📊 Game Stats</h3>
+    <p>Total Players: <b id="totalUsers">Loading...</b></p>
+  </div>
+
+  <div class="card">
+    <h3>🛠️ Manage User</h3>
+    <input type="text" id="targetId" placeholder="Enter Telegram ID">
+    <input type="number" id="amount" placeholder="Amount (Coins/XP)">
+    
+    <div style="display:flex; gap:5px;">
+      <button onclick="updateUser('coins')">💰 Add Coins</button>
+      <button onclick="updateUser('xp')">✨ Add XP</button>
+    </div>
+    <div style="display:flex; gap:5px; margin-top:5px;">
+        <button class="red" onclick="banUser()">🚫 BAN USER</button>
+        <button onclick="getUser()">🔍 Search User</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>👥 Recent Players</h3>
+    <button onclick="loadUsers()">🔄 Refresh List</button>
+    <table id="userTable">
+      <thead><tr><th>ID</th><th>Name</th><th>Lvl</th><th>Coins</th></tr></thead>
+      <tbody id="userList"></tbody>
+    </table>
+  </div>
+
+  <script>
+    // Aapki ID hardcoded security ke liye
+    const ADMIN_ID = 1302298741; 
+
+    async function apiCall(action, payload = {}) {
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminId: ADMIN_ID, action, ...payload })
+      });
+      return await res.json();
+    }
+
+    async function loadStats() {
+      const data = await apiCall('getStats');
+      if(data.ok) document.getElementById('totalUsers').innerText = data.totalUsers;
+    }
+
+    async function loadUsers() {
+      const data = await apiCall('getUsers');
+      if(data.ok) {
+        const list = document.getElementById('userList');
+        list.innerHTML = data.users.map(u => `
+          <tr onclick="document.getElementById('targetId').value='${u.telegramId}'">
+            <td>${u.telegramId}</td>
+            <td>${u.fullname}</td>
+            <td>${u.character.level}</td>
+            <td>${u.coins}</td>
+          </tr>`).join('');
+      }
+    }
+
+    async function updateUser(type) {
+        const id = document.getElementById('targetId').value;
+        const amt = document.getElementById('amount').value;
+        if(!id || !amt) return alert("ID aur Amount daalo!");
+        
+        const res = await apiCall('updateUser', { targetId: id, type, amount: parseInt(amt) });
+        alert(res.message);
+        loadUsers();
+    }
+
+    async function banUser() {
+        const id = document.getElementById('targetId').value;
+        if(!confirm(`Are you sure you want to BAN ${id}?`)) return;
+        const res = await apiCall('banUser', { targetId: id });
+        alert(res.message);
+    }
+
+    async function getUser() {
+        const id = document.getElementById('targetId').value;
+        const res = await apiCall('findUser', { targetId: id });
+        if(res.ok) alert(JSON.stringify(res.user, null, 2));
+        else alert("User not found");
+    }
+
+    // Initial Load
+    loadStats();
+    loadUsers();
+  </script>
+</body>
+</html>
