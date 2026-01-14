@@ -33,7 +33,12 @@ const screens = {
 };
 
 document.querySelectorAll("nav button").forEach(btn => {
-  btn.onclick = () => show(btn.dataset.go);
+  btn.onclick = () => {
+    // Nav Active State
+    document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    show(btn.dataset.go);
+  };
 });
 
 function show(name){
@@ -42,11 +47,11 @@ function show(name){
   if(name === "profile") loadProfile(false);
   if(name === "arena") resetArenaUI();
   if(name === "shop") loadShop(); 
-  if(name === "leaderboard") loadLeaderboard('level'); // Default sort by level
+  if(name === "leaderboard") loadLeaderboard('level');
 }
 
 // =========================================
-// 2. AUTH & PROFILE (FIXED USERNAME DISPLAY)
+// 2. PROFILE & BACKPACK
 // =========================================
 async function authUser(){
   try {
@@ -62,8 +67,6 @@ async function authUser(){
 
 async function loadProfile(silent){
   const tgUser = tg?.initDataUnsafe?.user || {};
-  
-  // Basic display while loading
   if(tgUser.id && !silent) {
      document.getElementById("name").innerText = tgUser.first_name;
      document.getElementById("avatar").src = tgUser.photo_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${tgUser.id}`;
@@ -86,23 +89,17 @@ async function loadProfile(silent){
       document.getElementById("coinsMini").innerText = u.coins;
       playerCurrentHp = c.stats.hp; 
 
-      // ✅ FIX: Username & ID Display
-      // Hum direct element ko target karke innerHTML inject kar rahe hain
+      // Update Header
       const userEl = document.getElementById("username");
       const safeName = u.username ? `@${u.username}` : "No Username";
-      
-      userEl.innerHTML = `
-        <span style="color:#3498db; font-weight:bold;">${safeName}</span><br>
-        <span style="font-size:11px; opacity:0.6; color:#ccc;">ID: ${u.telegramId}</span>
-      `;
-      userEl.style.lineHeight = "1.4"; // Thoda gap taki saaf dikhe
+      userEl.innerHTML = `<span style="color:#3b82f6; font-weight:600;">${safeName}</span><br><span style="font-size:11px; opacity:0.6;">ID: ${u.telegramId}</span>`;
 
       // Character Box
       const filename = getImgPath(c.image);
       const xpPercent = Math.min((c.xp / c.xpToNext) * 100, 100);
 
       document.getElementById("profileBox").innerHTML = `
-        <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; display:flex; gap:15px; align-items:center;">
+        <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:12px; display:flex; gap:15px; align-items:center; border:1px solid rgba(255,255,255,0.05);">
           <img src="/public/images/${filename}" 
                data-filename="${filename}"
                onerror="window.fixImg(this)"
@@ -110,30 +107,34 @@ async function loadProfile(silent){
           <div style="flex:1;">
              <div style="font-weight:bold; font-size:16px;">
                 ${c.name} 
-                <span style="font-size:12px; background:#3498db; padding:2px 6px; border-radius:4px; margin-left:5px;">Lvl ${c.level}</span>
+                <span style="font-size:11px; background:#3b82f6; padding:2px 6px; border-radius:4px; margin-left:5px;">Lvl ${c.level}</span>
              </div>
-             <div style="font-size:12px; margin-top:6px; opacity:0.9; display:grid; grid-template-columns:1fr 1fr; gap:5px;">
+             <div style="font-size:12px; margin-top:8px; display:grid; grid-template-columns:1fr 1fr; gap:4px; color:#cbd5e1;">
                 <span>❤️ HP: ${c.stats.hp}</span>
                 <span>⚔️ ATK: ${c.stats.attack}</span>
                 <span>🛡️ DEF: ${c.stats.defense}</span>
                 <span>⚡ SPD: ${c.stats.speed}</span>
              </div>
-             <div style="width:100%; height:4px; background:#444; margin-top:8px; border-radius:4px;">
-                <div style="height:100%; width:${xpPercent}%; background:#f1c40f; border-radius:4px;"></div>
+             <div style="width:100%; height:4px; background:#334155; margin-top:8px; border-radius:4px;">
+                <div style="height:100%; width:${xpPercent}%; background:#facc15; border-radius:4px;"></div>
              </div>
           </div>
         </div>
+        
+        <h3 style="margin-top:20px; font-size:16px;">🎒 Backpack</h3>
+        ${renderBackpack(u.inventory)}
       `;
 
-      // Admin Button (Owner Only)
+      // Admin Button
       if (AUTH.user.telegramId === 1302298741) {
           if (!document.getElementById("adminBtn")) {
               const btn = document.createElement("button");
               btn.id = "adminBtn";
-              btn.innerText = "👮‍♂️ OPEN ADMIN PANEL";
+              btn.innerText = "🛡️ OWNER PANEL";
               btn.className = "action-btn"; 
-              btn.style.background = "#2c3e50"; 
-              btn.style.marginTop = "10px";
+              btn.style.background = "#0f172a"; 
+              btn.style.border = "1px solid #334155";
+              btn.style.marginTop = "15px";
               btn.onclick = () => { window.location.href = "admin.html"; };
               document.querySelector("#screen-profile .content-box").appendChild(btn);
           }
@@ -141,6 +142,52 @@ async function loadProfile(silent){
     }
   } catch(e) { if(!silent) console.error(e); }
 }
+
+// Render Backpack Items
+function renderBackpack(inventory) {
+    if (!inventory || inventory.length === 0) {
+        return `<div style="padding:15px; text-align:center; background:rgba(0,0,0,0.2); border-radius:10px; font-size:13px; color:#94a3b8;">Empty Backpack</div>`;
+    }
+
+    // Group items for display (Optional improvement, listing raw for now)
+    let html = `<div class="backpack-grid">`;
+    
+    inventory.forEach((item, idx) => {
+        let actionBtn = "";
+        let color = "#fff";
+        
+        if (item.type === 'potion') {
+            color = "#22c55e";
+            actionBtn = `<button onclick="useItem('${item.name}')" style="width:100%; margin-top:5px; background:#22c55e; border:none; padding:4px; border-radius:4px; color:white; font-size:11px; cursor:pointer;">Use</button>`;
+        } else {
+            actionBtn = `<div style="font-size:10px; color:#94a3b8; margin-top:5px;">Equipped</div>`;
+        }
+
+        let icon = item.type === 'weapon' ? '⚔️' : item.type === 'armor' ? '🛡️' : '🧪';
+
+        html += `
+        <div class="bp-item" style="border-bottom: 2px solid ${color}">
+            <div style="font-size:24px;">${icon}</div>
+            <div style="font-size:12px; font-weight:bold; margin-top:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.name}</div>
+            ${actionBtn}
+        </div>`;
+    });
+    
+    html += `</div>`;
+    return html;
+}
+
+// Action: Use Potion
+async function useItem(itemName) {
+    const res = await fetch('/api/shop', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ telegramId: AUTH.user.telegramId, action: 'use', itemId: itemName })
+    });
+    const data = await res.json();
+    alert(data.message);
+    if(data.ok) loadProfile(false);
+}
+
 
 setInterval(() => {
   if(document.getElementById("screen-profile").classList.contains("active")) loadProfile(true); 
@@ -160,11 +207,17 @@ document.getElementById("dailyBtn").onclick = async () => {
 };
 
 // =========================================
-// 3. SHOP SYSTEM
+// 3. SHOP SYSTEM (WITH COINS DISPLAY)
 // =========================================
 async function loadShop() {
     const shopContainer = document.querySelector("#screen-shop .content-box");
-    shopContainer.innerHTML = "<h3>🛒 Shop Loading...</h3>";
+    // Show User Balance at Top
+    let balanceHtml = `<div style="text-align:center; padding:10px; background:rgba(245, 158, 11, 0.1); border-radius:10px; margin-bottom:15px; border:1px solid rgba(245, 158, 11, 0.3);">
+        <div style="font-size:12px; color:#fbbf24;">Your Balance</div>
+        <div style="font-size:20px; font-weight:bold; color:#fff;">💰 ${AUTH?.user?.coins || 0}</div>
+    </div>`;
+
+    shopContainer.innerHTML = balanceHtml + "<h3>🛒 Loading Items...</h3>";
 
     if(!AUTH) await authUser();
 
@@ -176,27 +229,27 @@ async function loadShop() {
         const data = await res.json();
 
         if (!data.items || data.items.length === 0) {
-            shopContainer.innerHTML = "<h3>🛒 Shop</h3><p>Shop is empty.</p>";
+            shopContainer.innerHTML = balanceHtml + "<h3>🛒 Shop</h3><p>Shop is empty.</p>";
             return;
         }
 
-        let html = `<h3>🛒 Equipment</h3>`;
+        let html = balanceHtml + `<h3>🛒 Equipment</h3>`;
         
         data.items.forEach(item => {
             let icon = "❓";
             let color = "#fff";
-            if(item.type === 'weapon') { icon = "⚔️"; color = "#e74c3c"; }
-            if(item.type === 'armor') { icon = "🛡️"; color = "#3498db"; }
-            if(item.type === 'potion') { icon = "🧪"; color = "#2ecc71"; }
+            if(item.type === 'weapon') { icon = "⚔️"; color = "#ef4444"; }
+            if(item.type === 'armor') { icon = "🛡️"; color = "#3b82f6"; }
+            if(item.type === 'potion') { icon = "🧪"; color = "#22c55e"; }
 
             html += `
-            <div style="background:rgba(255,255,255,0.08); padding:12px; margin-bottom:10px; border-radius:10px; display:flex; align-items:center; gap:12px; border-left:4px solid ${color};">
-                <div style="font-size:24px;">${icon}</div>
+            <div class="item-card" style="border-left: 4px solid ${color}">
+                <div class="item-icon">${icon}</div>
                 <div style="flex:1;">
                     <div style="font-weight:bold;">${item.name}</div>
                     <div style="font-size:12px; opacity:0.7;">+${item.stat} ${item.type.toUpperCase()}</div>
                 </div>
-                <button onclick="buyItem('${item.name}')" class="action-btn" style="width:auto; padding:6px 12px; font-size:13px; background:#f1c40f; color:#000; margin:0;">
+                <button onclick="buyItem('${item.name}')" class="action-btn" style="width:auto; padding:8px 15px; font-size:13px; background:#facc15; color:#000; margin:0; box-shadow:none;">
                     ${item.price} 💰
                 </button>
             </div>`;
@@ -218,15 +271,16 @@ async function buyItem(itemName) {
     });
     const data = await res.json();
     alert(data.message);
-    if(data.ok) loadProfile(false); 
+    if(data.ok) {
+        authUser().then(() => loadShop()); // Reload balance
+    } 
 }
 
 // =========================================
-// 4. LEADERBOARD SYSTEM (WITH FILTERS)
+// 4. LEADERBOARD SYSTEM (STYLED)
 // =========================================
 async function loadLeaderboard(filter = 'level') {
     const box = document.querySelector("#screen-leaderboard .content-box");
-    // Show Loading
     box.innerHTML = `<h3>🏆 Leaderboard</h3><p>Loading...</p>`;
 
     try {
@@ -237,15 +291,14 @@ async function loadLeaderboard(filter = 'level') {
         });
         const data = await res.json();
 
-        // 🔥 FILTER BUTTONS UI
-        let btnLevelStyle = filter === 'level' ? 'background:#f1c40f; color:#000;' : 'background:#444; color:#fff;';
-        let btnCoinStyle = filter === 'coins' ? 'background:#f1c40f; color:#000;' : 'background:#444; color:#fff;';
+        let btnLevelStyle = filter === 'level' ? 'background:#facc15; color:#000;' : 'background:rgba(255,255,255,0.1); color:#fff;';
+        let btnCoinStyle = filter === 'coins' ? 'background:#facc15; color:#000;' : 'background:rgba(255,255,255,0.1); color:#fff;';
 
         let html = `
             <h3>🏆 Leaderboard</h3>
             <div style="display:flex; gap:10px; margin-bottom:15px;">
-                <button onclick="loadLeaderboard('level')" style="flex:1; padding:8px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; ${btnLevelStyle}">⚡ Top Levels</button>
-                <button onclick="loadLeaderboard('coins')" style="flex:1; padding:8px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; ${btnCoinStyle}">💰 Top Richest</button>
+                <button onclick="loadLeaderboard('level')" style="flex:1; padding:10px; border:none; border-radius:10px; font-weight:bold; cursor:pointer; ${btnLevelStyle}">⚡ Levels</button>
+                <button onclick="loadLeaderboard('coins')" style="flex:1; padding:10px; border:none; border-radius:10px; font-weight:bold; cursor:pointer; ${btnCoinStyle}">💰 Rich List</button>
             </div>
         `;
         
@@ -254,37 +307,36 @@ async function loadLeaderboard(filter = 'level') {
         } else {
              html += `<div style="display:flex; flex-direction:column; gap:8px;">`;
              data.leaderboard.forEach((u, index) => {
-                 let rankEmoji = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index+1}`;
-                 let style = index === 0 ? "background:linear-gradient(45deg, #f1c40f33, transparent); border:1px solid #f1c40f;" : "background:rgba(255,255,255,0.05);";
-                 
-                 // Show highlight value based on filter
-                 let highlightVal = filter === 'coins' ? `${u.coins} 💰` : `Lvl ${u.character?.level || 1}`;
+                 let rankClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : "";
+                 let rankIcon = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index+1}`;
+                 let bgStyle = index === 0 ? "background:linear-gradient(90deg, rgba(251, 191, 36, 0.1), transparent); border-left:3px solid #facc15;" : "background:rgba(255,255,255,0.03);";
+                 let displayVal = filter === 'coins' ? `${u.coins} 💰` : `Lvl ${u.character?.level || 1}`;
 
                  html += `
-                 <div style="${style} padding:10px; border-radius:8px; display:flex; align-items:center; justify-content:space-between;">
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <span style="font-size:18px; width:30px;">${rankEmoji}</span>
+                 <div style="${bgStyle} padding:12px; border-radius:8px; display:flex; align-items:center; justify-content:space-between;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <span style="font-size:16px; width:25px; font-weight:bold;" class="${rankClass}">${rankIcon}</span>
                         <div>
-                            <div style="font-weight:bold;">${u.fullname}</div>
-                            <div style="font-size:11px; opacity:0.6;">@${u.username || 'unknown'}</div>
+                            <div style="font-weight:600; font-size:14px;">${u.fullname}</div>
+                            <div style="font-size:11px; opacity:0.5;">@${u.username || 'unknown'}</div>
                         </div>
                     </div>
-                    <div style="font-weight:bold; color:#f1c40f;">${highlightVal}</div>
+                    <div style="font-weight:bold; color:#facc15; font-size:14px;">${displayVal}</div>
                  </div>`;
              });
              html += `</div>`;
         }
-
         box.innerHTML = html;
-
-    } catch(e) {
-        box.innerHTML = "Error loading leaderboard.";
-    }
+    } catch(e) { box.innerHTML = "Error loading leaderboard."; }
 }
 
+// ... (Baaki Battle Logic Functions Same Rahenge - startCombat, searchMonster, attackTurn, etc.) ...
+// NOTE: Ensure attackTurn and other functions are still present at the bottom!
 // =========================================
-// 5. BATTLE LOGIC (EXISTING)
+// 5. BATTLE LOGIC (Existing Code)
 // =========================================
+// (Yahan aapka purana Battle Logic code aayega jo maine pichle response me diya tha)
+// Ensure you keep 'searchMonster', 'startCombat', 'attackTurn', 'addLog', 'spawnDamage', 'updateBars' functions here.
 async function searchMonster() {
   if(!AUTH) await authUser();
   const btn = event?.target; 
