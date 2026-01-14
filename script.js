@@ -7,16 +7,19 @@ tg?.expand();
 
 let AUTH = null;
 let activeEnemy = null;
-let playerCurrentHp = 0;
+let playerCurrentHp = 0; // Tracks HP during battle
 
+// Helper: Get Clean Image Filename
 function getImgPath(imgName) {
   if (!imgName) return "HarutoHikari.jpg"; 
   return imgName.split('/').pop(); 
 }
 
+// Helper: Fix Broken Images (Fallback)
 window.fixImg = function(imgEl) {
   const filename = imgEl.getAttribute('data-filename');
   if (!filename) return;
+  // Try public path first, then images path, then placeholder
   if (imgEl.src.includes("/public/images/")) {
       imgEl.src = `/images/${filename}`;
   } else if (imgEl.src.includes("/images/")) {
@@ -32,9 +35,9 @@ const screens = {
   leaderboard: document.getElementById("screen-leaderboard"),
 };
 
+// Navigation Handling
 document.querySelectorAll("nav button").forEach(btn => {
   btn.onclick = () => {
-    // Nav Active State
     document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     show(btn.dataset.go);
@@ -44,6 +47,8 @@ document.querySelectorAll("nav button").forEach(btn => {
 function show(name){
   Object.values(screens).forEach(s => s.classList.remove("active"));
   screens[name].classList.add("active");
+  
+  // Load specific data when tab opens
   if(name === "profile") loadProfile(false);
   if(name === "arena") resetArenaUI();
   if(name === "shop") loadShop(); 
@@ -51,7 +56,7 @@ function show(name){
 }
 
 // =========================================
-// 2. PROFILE & BACKPACK
+// 2. AUTH, PROFILE & BACKPACK
 // =========================================
 async function authUser(){
   try {
@@ -86,16 +91,17 @@ async function loadProfile(silent){
       const u = data.user;
       const c = u.character;
       AUTH.user = u; 
+      
+      // Update Top Header
       document.getElementById("coinsMini").innerText = u.coins;
-      playerCurrentHp = c.stats.hp; 
-
-      // Update Header
       const userEl = document.getElementById("username");
       const safeName = u.username ? `@${u.username}` : "No Username";
       userEl.innerHTML = `<span style="color:#3b82f6; font-weight:600;">${safeName}</span><br><span style="font-size:11px; opacity:0.6;">ID: ${u.telegramId}</span>`;
 
-      // Character Box
+      // Character Card Stats
       const filename = getImgPath(c.image);
+      const maxHp = 100 + (c.level * 10); // Formula must match backend logic
+      const hpPercent = Math.min((c.stats.hp / maxHp) * 100, 100);
       const xpPercent = Math.min((c.xp / c.xpToNext) * 100, 100);
 
       document.getElementById("profileBox").innerHTML = `
@@ -109,12 +115,20 @@ async function loadProfile(silent){
                 ${c.name} 
                 <span style="font-size:11px; background:#3b82f6; padding:2px 6px; border-radius:4px; margin-left:5px;">Lvl ${c.level}</span>
              </div>
+             
+             <div style="font-size:11px; margin-top:8px; display:flex; justify-content:space-between; color:#cbd5e1;">
+                 <span>HP ${c.stats.hp} / ${maxHp}</span>
+             </div>
+             <div style="width:100%; height:8px; background:#334155; margin-top:2px; border-radius:4px; overflow:hidden;">
+                <div style="height:100%; width:${hpPercent}%; background:#2ecc71; transition:width 0.3s;"></div>
+             </div>
+
              <div style="font-size:12px; margin-top:8px; display:grid; grid-template-columns:1fr 1fr; gap:4px; color:#cbd5e1;">
-                <span>❤️ HP: ${c.stats.hp}</span>
                 <span>⚔️ ATK: ${c.stats.attack}</span>
                 <span>🛡️ DEF: ${c.stats.defense}</span>
                 <span>⚡ SPD: ${c.stats.speed}</span>
              </div>
+             
              <div style="width:100%; height:4px; background:#334155; margin-top:8px; border-radius:4px;">
                 <div style="height:100%; width:${xpPercent}%; background:#facc15; border-radius:4px;"></div>
              </div>
@@ -125,7 +139,7 @@ async function loadProfile(silent){
         ${renderBackpack(u.inventory)}
       `;
 
-      // Admin Button
+      // OWNER PANEL BUTTON (Only for ID: 1302298741)
       if (AUTH.user.telegramId === 1302298741) {
           if (!document.getElementById("adminBtn")) {
               const btn = document.createElement("button");
@@ -143,24 +157,23 @@ async function loadProfile(silent){
   } catch(e) { if(!silent) console.error(e); }
 }
 
-// Render Backpack Items
+// --- BACKPACK HELPERS ---
 function renderBackpack(inventory) {
     if (!inventory || inventory.length === 0) {
         return `<div style="padding:15px; text-align:center; background:rgba(0,0,0,0.2); border-radius:10px; font-size:13px; color:#94a3b8;">Empty Backpack</div>`;
     }
 
-    // Group items for display (Optional improvement, listing raw for now)
     let html = `<div class="backpack-grid">`;
     
-    inventory.forEach((item, idx) => {
+    inventory.forEach((item) => {
         let actionBtn = "";
         let color = "#fff";
         
         if (item.type === 'potion') {
             color = "#22c55e";
-            actionBtn = `<button onclick="useItem('${item.name}')" style="width:100%; margin-top:5px; background:#22c55e; border:none; padding:4px; border-radius:4px; color:white; font-size:11px; cursor:pointer;">Use</button>`;
+            actionBtn = `<button onclick="useItem('${item.name}')" style="width:100%; margin-top:5px; background:#22c55e; border:none; padding:6px; border-radius:6px; color:black; font-weight:bold; font-size:11px; cursor:pointer;">Use</button>`;
         } else {
-            actionBtn = `<div style="font-size:10px; color:#94a3b8; margin-top:5px;">Equipped</div>`;
+            actionBtn = `<div style="font-size:10px; color:#94a3b8; margin-top:8px;">Equipped</div>`;
         }
 
         let icon = item.type === 'weapon' ? '⚔️' : item.type === 'armor' ? '🛡️' : '🧪';
@@ -177,22 +190,17 @@ function renderBackpack(inventory) {
     return html;
 }
 
-// Action: Use Potion
 async function useItem(itemName) {
     const res = await fetch('/api/shop', {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ telegramId: AUTH.user.telegramId, action: 'use', itemId: itemName })
     });
     const data = await res.json();
-    alert(data.message);
-    if(data.ok) loadProfile(false);
+    alert(data.message); // Shows "HP Full" or "Used"
+    if(data.ok) loadProfile(false); // Refresh HP Bar
 }
 
-
-setInterval(() => {
-  if(document.getElementById("screen-profile").classList.contains("active")) loadProfile(true); 
-}, 3000);
-
+// Daily Reward
 document.getElementById("dailyBtn").onclick = async () => {
   if(!AUTH) await authUser();
   try {
@@ -201,18 +209,26 @@ document.getElementById("dailyBtn").onclick = async () => {
         body: JSON.stringify({ telegramId: AUTH.user.telegramId })
       });
       const data = await res.json();
+      // Message contains either reward or time remaining
       alert(data.ok ? `🎁 Reward: ${data.reward} coins!` : `⏳ ${data.message}`);
       if(data.ok) loadProfile(false); 
   } catch(e) { alert("Error: " + e.message); }
 };
 
+// Auto Refresh Profile
+setInterval(() => {
+  if(document.getElementById("screen-profile").classList.contains("active")) loadProfile(true); 
+}, 5000);
+
+
 // =========================================
-// 3. SHOP SYSTEM (WITH COINS DISPLAY)
+// 3. SHOP SYSTEM (With Balance)
 // =========================================
 async function loadShop() {
     const shopContainer = document.querySelector("#screen-shop .content-box");
-    // Show User Balance at Top
-    let balanceHtml = `<div style="text-align:center; padding:10px; background:rgba(245, 158, 11, 0.1); border-radius:10px; margin-bottom:15px; border:1px solid rgba(245, 158, 11, 0.3);">
+    
+    // Balance Widget
+    let balanceHtml = `<div style="text-align:center; padding:12px; background:rgba(245, 158, 11, 0.1); border-radius:10px; margin-bottom:15px; border:1px solid rgba(245, 158, 11, 0.3);">
         <div style="font-size:12px; color:#fbbf24;">Your Balance</div>
         <div style="font-size:20px; font-weight:bold; color:#fff;">💰 ${AUTH?.user?.coins || 0}</div>
     </div>`;
@@ -257,9 +273,7 @@ async function loadShop() {
         
         shopContainer.innerHTML = html;
 
-    } catch (e) {
-        shopContainer.innerHTML = "Error loading shop.";
-    }
+    } catch (e) { shopContainer.innerHTML = "Error loading shop."; }
 }
 
 async function buyItem(itemName) {
@@ -272,12 +286,12 @@ async function buyItem(itemName) {
     const data = await res.json();
     alert(data.message);
     if(data.ok) {
-        authUser().then(() => loadShop()); // Reload balance
+        authUser().then(() => loadShop()); // Reload to show new balance
     } 
 }
 
 // =========================================
-// 4. LEADERBOARD SYSTEM (STYLED)
+// 4. LEADERBOARD (Filters)
 // =========================================
 async function loadLeaderboard(filter = 'level') {
     const box = document.querySelector("#screen-leaderboard .content-box");
@@ -285,20 +299,20 @@ async function loadLeaderboard(filter = 'level') {
 
     try {
         const res = await fetch('/api/leaderboard', {
-            method: 'POST',
-            headers: {'Content-Type':'application/json'},
+            method: 'POST', headers: {'Content-Type':'application/json'},
             body: JSON.stringify({ filter: filter })
         });
         const data = await res.json();
 
+        // Filter Buttons
         let btnLevelStyle = filter === 'level' ? 'background:#facc15; color:#000;' : 'background:rgba(255,255,255,0.1); color:#fff;';
         let btnCoinStyle = filter === 'coins' ? 'background:#facc15; color:#000;' : 'background:rgba(255,255,255,0.1); color:#fff;';
 
         let html = `
             <h3>🏆 Leaderboard</h3>
             <div style="display:flex; gap:10px; margin-bottom:15px;">
-                <button onclick="loadLeaderboard('level')" style="flex:1; padding:10px; border:none; border-radius:10px; font-weight:bold; cursor:pointer; ${btnLevelStyle}">⚡ Levels</button>
-                <button onclick="loadLeaderboard('coins')" style="flex:1; padding:10px; border:none; border-radius:10px; font-weight:bold; cursor:pointer; ${btnCoinStyle}">💰 Rich List</button>
+                <button onclick="loadLeaderboard('level')" style="flex:1; padding:10px; border:none; border-radius:8px; font-weight:bold; cursor:pointer; ${btnLevelStyle}">⚡ Levels</button>
+                <button onclick="loadLeaderboard('coins')" style="flex:1; padding:10px; border:none; border-radius:8px; font-weight:bold; cursor:pointer; ${btnCoinStyle}">💰 Rich List</button>
             </div>
         `;
         
@@ -310,6 +324,7 @@ async function loadLeaderboard(filter = 'level') {
                  let rankClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : "";
                  let rankIcon = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index+1}`;
                  let bgStyle = index === 0 ? "background:linear-gradient(90deg, rgba(251, 191, 36, 0.1), transparent); border-left:3px solid #facc15;" : "background:rgba(255,255,255,0.03);";
+                 
                  let displayVal = filter === 'coins' ? `${u.coins} 💰` : `Lvl ${u.character?.level || 1}`;
 
                  html += `
@@ -330,13 +345,10 @@ async function loadLeaderboard(filter = 'level') {
     } catch(e) { box.innerHTML = "Error loading leaderboard."; }
 }
 
-// ... (Baaki Battle Logic Functions Same Rahenge - startCombat, searchMonster, attackTurn, etc.) ...
-// NOTE: Ensure attackTurn and other functions are still present at the bottom!
+
 // =========================================
-// 5. BATTLE LOGIC (Existing Code)
+// 5. BATTLE LOGIC (Refined)
 // =========================================
-// (Yahan aapka purana Battle Logic code aayega jo maine pichle response me diya tha)
-// Ensure you keep 'searchMonster', 'startCombat', 'attackTurn', 'addLog', 'spawnDamage', 'updateBars' functions here.
 async function searchMonster() {
   if(!AUTH) await authUser();
   const btn = event?.target; 
@@ -409,6 +421,7 @@ async function attackTurn() {
   pImg.classList.add("lunge-right");
   setTimeout(() => pImg.classList.remove("lunge-right"), 300);
 
+  // Store visual state before API returns
   let visualEnemyHp = activeEnemy.hp;
   let visualPlayerHp = playerCurrentHp;
 
@@ -468,6 +481,7 @@ async function attackTurn() {
     });
 
     setTimeout(() => {
+        // Sync final state
         updateBars(data.newEnemyHp, activeEnemy.maxHp, data.newPlayerHp, AUTH.user.character.stats.hp);
 
         if(data.win) { 
@@ -492,6 +506,7 @@ async function attackTurn() {
   }
 }
 
+// LOGS: Scroll to bottom style
 function addLog(msg, type) {
     const logBox = document.getElementById("battleLog");
     const p = document.createElement("div");
@@ -553,4 +568,6 @@ function resetArenaUI() {
     document.getElementById("arena-fight").style.display = "none"; 
 }
 function runAway() { if(confirm("Run away?")) resetArenaUI(); }
+
+// INIT
 show("profile");
