@@ -9,12 +9,15 @@ let AUTH = null;
 let activeEnemy = null;
 let playerCurrentHp = 0;
 let battleMode = 'pvm'; 
+let battleTimeouts = []; // 🔥 NEW: Stores all animation timers
 
+// Helper: Image Path
 function getImgPath(imgName) {
   if (!imgName) return "HarutoHikari.jpg"; 
   return imgName.split('/').pop(); 
 }
 
+// Helper: Fix Broken Images
 window.fixImg = function(imgEl) {
   const filename = imgEl.getAttribute('data-filename');
   if (!filename) return;
@@ -22,7 +25,7 @@ window.fixImg = function(imgEl) {
       imgEl.src = `/images/${filename}`;
   } else if (imgEl.src.includes("/images/")) {
       imgEl.onerror = null; 
-      imgEl.src = "https://placehold.co/100x100/333/fff?text=Item"; 
+      imgEl.src = "https://placehold.co/100x100/333/fff?text=No+Img"; 
   }
 };
 
@@ -46,7 +49,7 @@ function show(name){
   screens[name].classList.add("active");
   
   if(name === "profile") loadProfile(false);
-  if(name === "arena") fullArenaReset(); // 🔥 FIX: Reset everything on tab switch
+  if(name === "arena") fullArenaReset(); // Force reset on tab switch
   if(name === "shop") loadShop(); 
   if(name === "leaderboard") loadLeaderboard('level');
 }
@@ -247,21 +250,29 @@ async function loadLeaderboard(filter = 'level') {
 }
 
 // =========================================
-// 5. BATTLE SYSTEM (FIXED & RESET)
+// 5. BATTLE SYSTEM (FIXED - NO STUCK BUG)
 // =========================================
 
-// 🔥 KEY FIX: Hard Reset Function
+// 🔥 KEY FIX: Function to kill all running animations
+function clearBattleTimeouts() {
+    battleTimeouts.forEach(id => clearTimeout(id));
+    battleTimeouts = [];
+}
+
+// 🔥 KEY FIX: Complete Hard Reset of Arena
 function fullArenaReset() {
+    clearBattleTimeouts(); // Stop old logs/animations
+    
     activeEnemy = null;
     document.getElementById("arena-select").style.display = "block";
     document.getElementById("arena-preview").style.display = "none";
     document.getElementById("arena-fight").style.display = "none";
     
-    // Clear old data
+    // Reset Data
     document.getElementById("prevName").innerText = "Loading...";
     document.getElementById("prevImage").src = "";
-    document.getElementById("battleLog").innerHTML = ""; // Clear logs
-    document.getElementById("damageOverlay").innerHTML = ""; // Clear damage texts
+    document.getElementById("battleLog").innerHTML = ""; 
+    document.getElementById("damageOverlay").innerHTML = "";
     
     // Reset Buttons
     document.getElementById("fightControls").style.display = "flex";
@@ -269,17 +280,16 @@ function fullArenaReset() {
     const atkBtn = document.querySelector("#fightControls button.red");
     atkBtn.disabled = false; atkBtn.style.opacity = "1";
     
-    // Reset Bars to Full Visual
+    // Reset Bars Visuals
     document.getElementById("battleEnemyBar").style.width = "100%";
     document.getElementById("battlePlayerBar").style.width = "100%";
 }
 
 async function searchMonster() {
     if(!AUTH) await authUser();
-    fullArenaReset(); // ✨ Clean slate
+    fullArenaReset(); // ✨ START FRESH
     battleMode = 'pvm';
     
-    // Show Searching UI
     document.getElementById("arena-select").style.display = "none";
     document.getElementById("arena-preview").style.display = "block";
     document.getElementById("previewTitle").innerText = "🔍 Searching...";
@@ -293,7 +303,7 @@ async function searchMonster() {
 
 async function searchPvP() {
     if(!AUTH) await authUser();
-    fullArenaReset(); // ✨ Clean slate
+    fullArenaReset(); // ✨ START FRESH
     battleMode = 'pvp';
     
     document.getElementById("arena-select").style.display = "none";
@@ -323,9 +333,7 @@ function setupPreview(enemy, isPvP) {
     document.getElementById("prevHp").innerText = enemy.hp;
     document.getElementById("prevAtk").innerText = enemy.atk;
     
-    // Ensure button actions are set correctly
     const skipBtn = document.getElementById("skipBtn");
-    // Remove old listeners by cloning
     const newSkip = skipBtn.cloneNode(true);
     skipBtn.parentNode.replaceChild(newSkip, skipBtn);
     newSkip.onclick = isPvP ? searchPvP : searchMonster;
@@ -353,36 +361,30 @@ function startCombat() {
   document.getElementById("battleLog").innerHTML = ""; 
   document.getElementById("damageOverlay").innerHTML = "";
   
-  // Show Controls
   document.getElementById("fightControls").style.display = "flex";
   document.getElementById("fightEndBtn").style.display = "none";
   
   addLog(battleMode === 'pvp' ? "🤺 PvP Duel Started!" : "⚔️ Monster Battle Started!", "neutral");
-  
-  const atkBtn = document.querySelector("#fightControls button.red");
-  atkBtn.disabled = false;
-  atkBtn.style.opacity = "1";
 }
 
 async function attackTurn() {
   const btn = document.querySelector("#fightControls button.red");
-  btn.disabled = true; 
-  btn.style.opacity = "0.5";
+  btn.disabled = true; btn.style.opacity = "0.5";
 
   const pImg = document.getElementById("battlePlayerImg");
   pImg.classList.add("lunge-right");
-  setTimeout(() => pImg.classList.remove("lunge-right"), 300);
+  
+  // 🔥 Store timer to clear it later if needed
+  const t1 = setTimeout(() => pImg.classList.remove("lunge-right"), 300);
+  battleTimeouts.push(t1);
+
+  let visualEnemyHp = activeEnemy.hp;
+  let visualPlayerHp = playerCurrentHp;
 
   try {
     const res = await fetch("/api/battle", { 
         method: "POST", headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify({ 
-            telegramId: AUTH.user.telegramId, 
-            action: 'attack', 
-            currentEnemy: activeEnemy, 
-            playerHp: playerCurrentHp,
-            mode: battleMode 
-        }) 
+        body: JSON.stringify({ telegramId: AUTH.user.telegramId, action: 'attack', currentEnemy: activeEnemy, playerHp: playerCurrentHp, mode: battleMode }) 
     });
     const data = await res.json();
 
@@ -390,14 +392,19 @@ async function attackTurn() {
     playerCurrentHp = data.newPlayerHp;
 
     let delay = 0;
+
     data.log.forEach((l) => {
-        setTimeout(() => {
+        // 🔥 Store loop timers to clear them on reset
+        const tLoop = setTimeout(() => {
             if(l.type === 'player') {
                 addLog(`👊 You hit <b>${l.msg}</b> dmg!`, l.isCrit ? "crit" : "player");
                 spawnDamage(l.msg, 'enemy', l.isCrit, false);
                 document.getElementById("battleEnemyImg").classList.add("shake");
                 setTimeout(() => document.getElementById("battleEnemyImg").classList.remove("shake"), 300);
-                updateBars(activeEnemy.hp, activeEnemy.maxHp, playerCurrentHp, AUTH.user.character.stats.hp);
+                
+                let dmg = parseInt(l.msg);
+                visualEnemyHp = Math.max(0, visualEnemyHp - dmg);
+                updateBars(visualEnemyHp, activeEnemy.maxHp, visualPlayerHp, AUTH.user.character.stats.hp);
             } else if (l.type === 'enemy-miss') {
                  addLog(`💨 You dodged!`, "dodge");
                  spawnDamage("DODGE!", 'player', false, true); 
@@ -409,13 +416,17 @@ async function attackTurn() {
                 spawnDamage(l.msg, 'player', false, false);
                 pImg.classList.add("shake");
                 setTimeout(() => pImg.classList.remove("shake"), 300);
-                updateBars(activeEnemy.hp, activeEnemy.maxHp, playerCurrentHp, AUTH.user.character.stats.hp);
+                
+                let dmg = parseInt(l.msg);
+                visualPlayerHp = Math.max(0, visualPlayerHp - dmg);
+                updateBars(visualEnemyHp, activeEnemy.maxHp, visualPlayerHp, AUTH.user.character.stats.hp);
             }
         }, delay);
+        battleTimeouts.push(tLoop);
         delay += 800; 
     });
 
-    setTimeout(() => {
+    const tEnd = setTimeout(() => {
         updateBars(data.newEnemyHp, activeEnemy.maxHp, data.newPlayerHp, AUTH.user.character.stats.hp);
         if(data.win) { 
             addLog(`🏆 <b>VICTORY!</b> +${activeEnemy.coins} Coins`, "win");
@@ -425,10 +436,10 @@ async function attackTurn() {
             endFight(false); 
         }
         if(!data.win && !data.playerDied) {
-            btn.disabled = false;
-            btn.style.opacity = "1";
+            btn.disabled = false; btn.style.opacity = "1";
         }
     }, delay + 200);
+    battleTimeouts.push(tEnd);
 
   } catch(e) { alert(e.message); btn.disabled = false; btn.style.opacity = "1"; }
 }
@@ -452,13 +463,9 @@ function spawnDamage(val, target, isCrit, isDodge) {
     const overlay = document.getElementById("damageOverlay");
     const el = document.createElement("div");
     el.classList.add("damage-text");
-    if (isDodge) {
-        el.classList.add("dmg-dodge"); el.style.left = "25%"; el.style.top = "20%";
-    } else if(target === 'enemy') { 
-        el.classList.add(isCrit ? "dmg-crit" : "dmg-player"); el.style.left = "70%"; el.style.top = "30%"; 
-    } else { 
-        el.classList.add("dmg-enemy"); el.style.left = "30%"; el.style.top = "30%"; 
-    }
+    if (isDodge) { el.classList.add("dmg-dodge"); el.style.left = "25%"; el.style.top = "20%"; } 
+    else if(target === 'enemy') { el.classList.add(isCrit ? "dmg-crit" : "dmg-player"); el.style.left = "70%"; el.style.top = "30%"; } 
+    else { el.classList.add("dmg-enemy"); el.style.left = "30%"; el.style.top = "30%"; }
     el.innerText = val; 
     overlay.appendChild(el); 
     setTimeout(() => el.remove(), 800);
@@ -466,8 +473,7 @@ function spawnDamage(val, target, isCrit, isDodge) {
 
 function updateBars(e, eM, p, pM) { 
     if(!eM) eM = 100; if(!pM) pM = 100;
-    let ePer = (e / eM) * 100;
-    let pPer = (p / pM) * 100;
+    let ePer = (e / eM) * 100; let pPer = (p / pM) * 100;
     document.getElementById("battleEnemyBar").style.width = Math.max(0, Math.min(100, ePer)) + "%"; 
     document.getElementById("battlePlayerBar").style.width = Math.max(0, Math.min(100, pPer)) + "%"; 
 }
@@ -478,10 +484,7 @@ function endFight(win) {
     if(win) loadProfile(true); 
 }
 
+function resetArenaUI() { fullArenaReset(); }
 function runAway() { if(confirm("Run away?")) fullArenaReset(); }
 
-// 🔥 FIX: Clean UI reset when closing fight
-function resetArenaUI() { fullArenaReset(); }
-
-// INIT
 show("profile");
